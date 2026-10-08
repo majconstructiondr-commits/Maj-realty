@@ -1,69 +1,123 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+import Link from "next/link";
+import { HeroSearch } from "@/components/property/HeroSearch";
+import { ListingCard } from "@/components/property/ListingCard";
+import { ContactButtons } from "@/components/ui/ContactButtons";
+import { Icon } from "@/components/ui/Icon";
+import { featuredListings } from "@/lib/catalog/data";
+import { getSiteSettings } from "@/lib/site";
+import { SERVICES } from "@/lib/services";
+import { getTeam } from "@/lib/team";
 
-export default function Home() {
+export default async function HomePage() {
+  const [{ items, demo }, s, team] = await Promise.all([featuredListings(6), getSiteSettings(), getTeam()]);
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>
-            To get started, edit the{" "}
-            <code className={styles.code}>page.tsx</code> file.
-          </h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <>
+      <section className="hero">
+        <div className="container">
+          <span className="eyebrow">MAJ REALTY SRL · República Dominicana</span>
+          <h1>Encuentra, vende o administra tu propiedad con confianza</h1>
+          <p>Venta, renta, administración, remodelaciones, cotizaciones y gestiones de propiedades, con información clara en cada paso.</p>
+          <HeroSearch />
         </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </section>
+
+      <section className="section">
+        <div className="container">
+          <div className="row-between">
+            <div>
+              <span className="eyebrow">Propiedades publicadas</span>
+              <h2>Inmuebles disponibles</h2>
+            </div>
+            <div className="row">
+              <Link className="btn btn-outline btn-sm" href="/venta">Ver en venta</Link>
+              <Link className="btn btn-outline btn-sm" href="/renta">Ver en renta</Link>
+            </div>
+          </div>
+          {demo ? <p className="alert alert-warning small" style={{ marginTop: 12 }}>Ejemplos de demostración: no son inmuebles reales.</p> : null}
+          {items.length ? (
+            <div className="grid-3" style={{ marginTop: 20 }}>
+              {items.map((l) => (
+                <ListingCard key={l.id} l={l} />
+              ))}
+            </div>
+          ) : (
+            <div className="card empty" style={{ marginTop: 20 }}>
+              <p>Aún no hay inmuebles publicados. Cuéntanos qué buscas y te avisamos.</p>
+              <Link className="btn btn-primary" href="/busco-propiedad">Busco una propiedad</Link>
+            </div>
+          )}
         </div>
-      </main>
-    </div>
+      </section>
+
+      <section className="section section-alt">
+        <div className="container">
+          <span className="eyebrow">Servicios</span>
+          <h2>Todo lo que tu propiedad necesita</h2>
+          <hr className="gold-rule" />
+          <div className="grid-3">
+            {SERVICES.map((sv) => (
+              <Link key={sv.href} href={sv.href} className="card service-card" style={{ textDecoration: "none", color: "inherit" }}>
+                <span className="service-icon"><Icon name={sv.icon} size={24} /></span>
+                <h3 style={{ margin: 0 }}>{sv.title}</h3>
+                <p className="muted small" style={{ margin: 0 }}>{sv.text}</p>
+                <span className="small" style={{ color: "var(--gold-600)", fontWeight: 700, marginTop: "auto" }}>Ver más →</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="container">
+          <span className="eyebrow">Cómo trabajamos</span>
+          <h2>Un proceso claro y con registro</h2>
+          <hr className="gold-rule" />
+          <ol className="steps">
+            <li className="card"><h3>Solicitud</h3><p className="small muted">Nos escribes por la página o WhatsApp. Cada solicitud recibe un número de seguimiento.</p></li>
+            <li className="card"><h3>Evaluación</h3><p className="small muted">Un asesor revisa tu caso, coordina visitas y solicita solo la documentación necesaria.</p></li>
+            <li className="card"><h3>Propuesta</h3><p className="small muted">Recibes información o una cotización con alcance, vigencia y condiciones por escrito.</p></li>
+            <li className="card"><h3>Seguimiento</h3><p className="small muted">Consultas el estado desde tu cuenta, con historial de cada paso.</p></li>
+          </ol>
+        </div>
+      </section>
+
+      {team.length ? (
+        <section className="section section-alt">
+          <div className="container">
+            <span className="eyebrow">Equipo</span>
+            <h2>Nuestros asesores</h2>
+            <div className="grid-4" style={{ marginTop: 16 }}>
+              {team.map((m) => (
+                <div key={m.id} className="card card-body center">
+                  {m.photo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={m.photo_url} alt={m.display_name} style={{ width: 96, height: 96, borderRadius: "50%", objectFit: "cover", margin: "0 auto 10px" }} />
+                  ) : null}
+                  <strong>{m.display_name}</strong>
+                  {m.title ? <p className="small muted">{m.title}</p> : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      <section className="section">
+        <div className="container">
+          <div className="card card-body" style={{ background: "var(--navy-800)", color: "#fff" }}>
+            <div className="row-between">
+              <div>
+                <h2 style={{ color: "#fff", marginBottom: 6 }}>¿No encuentras lo que buscas?</h2>
+                <p style={{ color: "#dfe4ec", margin: 0 }}>Déjanos tus criterios y te contactamos cuando tengamos opciones.</p>
+              </div>
+              <Link href="/busco-propiedad" className="btn btn-gold">Busco una propiedad</Link>
+            </div>
+          </div>
+          <div style={{ marginTop: 24 }}>
+            <ContactButtons s={s} servicio="sus servicios" />
+          </div>
+        </div>
+      </section>
+    </>
   );
 }

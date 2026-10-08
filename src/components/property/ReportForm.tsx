@@ -5,7 +5,10 @@ import { reportListing, type ReportState } from "@/app/actions/listing";
 export function ReportForm({ propertyId }: { propertyId: string }) {
   const [state, action, pending] = useActionState<ReportState, FormData>(reportListing, { status: "idle" });
   const [t0, setT0] = useState(0);
-  useEffect(() => setT0(Date.now()), []);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- marca de tiempo solo en el cliente
+    setT0(Date.now());
+  }, []);
   if (state.status === "ok") return <p className="alert alert-success" role="status">{state.message}</p>;
   return (
     <details>

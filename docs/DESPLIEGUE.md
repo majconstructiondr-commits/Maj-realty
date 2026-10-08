@@ -61,6 +61,7 @@ Todas las cuentas deben crearse **a nombre de la empresa**, con correo de la emp
 1. Importar el repositorio de GitHub en Vercel (framework Next.js detectado automáticamente).
 2. Variables de entorno (*Settings → Environment Variables*), según `.env.example`:
    `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_LOGO_SRC`, `IP_HASH_SALT` (y opcionales).
+   Las variables `NEXT_PUBLIC_*` se incorporan al compilar: deben estar definidas **antes** del despliegue (si se cambian, volver a desplegar). Sin ellas la aplicación se compila en modo demostración.
 3. Desplegar. Revisar `/`, `/venta`, registro, recuperación de contraseña y panel.
 4. Mantener `NEXT_PUBLIC_ALLOW_INDEXING=false` hasta el lanzamiento.
 

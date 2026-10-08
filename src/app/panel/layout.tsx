@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { PanelNav } from "@/components/panel/PanelNav";
 import { hasRole, isStaffRole, requireUser } from "@/lib/auth";
 import { hasSupabase } from "@/lib/env";
+import { getSellerContext } from "@/lib/listing-editor/server";
 
 export const metadata: Metadata = { title: "Mi cuenta", robots: { index: false, follow: false } };
 
@@ -24,12 +25,14 @@ export default async function PanelLayout({ children }: { children: React.ReactN
     { href: "/panel/favoritos", label: "Favoritos" },
     { href: "/panel/busquedas", label: "Búsquedas guardadas" },
   ];
-  if (hasRole(u, "vendedor", "agencia", "propietario") || isStaffRole(u)) {
+  // Miembros de una agencia (añadidos por correo) no tienen el rol "agencia", pero sí membresía.
+  const memberships = (await getSellerContext())?.memberships ?? [];
+  if (hasRole(u, "vendedor", "agencia", "propietario") || isStaffRole(u) || memberships.length > 0) {
     items.push({ href: "/panel/publicaciones", label: "Mis publicaciones" }, { href: "/panel/licencia", label: "Licencia" });
   } else {
     items.push({ href: "/panel/publicar", label: "Quiero publicar" });
   }
-  if (hasRole(u, "agencia")) items.push({ href: "/panel/organizacion", label: "Mi agencia" });
+  if (hasRole(u, "agencia") || memberships.length > 0) items.push({ href: "/panel/organizacion", label: "Mi agencia" });
   if (hasRole(u, "propietario")) items.push({ href: "/panel/administracion", label: "Mis propiedades administradas" });
   items.push({ href: "/panel/perfil", label: "Perfil" }, { href: "/cuenta/seguridad", label: "Seguridad" });
   if (isStaffRole(u)) items.push({ href: "/admin", label: "Panel MAJ" });

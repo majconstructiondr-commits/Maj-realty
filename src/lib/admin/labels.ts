@@ -81,3 +81,18 @@ export function labelOf(map: Record<string, string>, value: string | null | unde
   if (!value) return "—";
   return map[value] ?? value.replace(/_/g, " ");
 }
+
+/** Claves de details (jsonb) de solicitudes → etiqueta legible. */
+export const DETAIL_LABELS: Record<string, string> = {
+  asunto: "Asunto", fecha_preferida: "Fecha preferida", tipo: "Tipo de inmueble", provincia: "Provincia", municipio: "Municipio",
+  sector: "Sector", precio_esperado: "Precio esperado", moneda: "Moneda", autorizado: "Declara estar autorizado",
+  visita_evaluacion: "Desea visita de evaluación", preferencias: "Preferencias", renta_esperada: "Renta esperada", amueblado: "Amueblado",
+  disponible_desde: "Disponible desde", unidades: "Unidades", ocupacion: "Ocupación", servicios: "Servicios solicitados",
+  situacion_actual: "Situación actual", tipo_trabajo: "Tipo de trabajo", area_m2: "Área (m²)", alcance: "Alcance",
+  presupuesto: "Presupuesto", fecha_deseada: "Fecha deseada", urgencia: "Urgencia", visita_tecnica: "Desea visita técnica",
+  servicio: "Servicio", referencia_inmueble: "Referencia del inmueble", service_code: "Servicio legal", descripcion: "Descripción",
+  operacion: "Operación", zonas: "Zonas", presupuesto_max: "Presupuesto máximo", habitaciones: "Habitaciones", fecha: "Fecha",
+  tipo_publicador: "Tipo de publicador",
+  cobro_rentas: "Cobro de rentas", mantenimiento: "Mantenimiento", busqueda_inquilinos: "Búsqueda de inquilinos",
+  contratos: "Contratos", informes: "Informes", pagos_servicios: "Pago de servicios",
+};

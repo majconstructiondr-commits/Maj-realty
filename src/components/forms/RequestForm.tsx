@@ -37,6 +37,7 @@ export function RequestForm(p: Props) {
   const [started, setStarted] = useState(0);
   const handled = useRef<string | null>(null);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- marca de tiempo solo en el cliente
     setStarted(Date.now());
   }, []);
 

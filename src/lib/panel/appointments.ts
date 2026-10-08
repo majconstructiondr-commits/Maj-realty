@@ -69,3 +69,13 @@ export function isValidSlot(hours: BusinessHours, date: string, time: string, du
 export function localDate(d: Date): string {
   return new Date(d.getTime() - 4 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
+
+/** Rango de fechas reservables (Santo Domingo): desde ahora + anticipación mínima hasta 89 días. */
+export function bookingWindow(leadHours: number, now: Date = new Date()) {
+  const t = now.getTime();
+  return {
+    nowMs: t,
+    minDate: localDate(new Date(t + leadHours * 3600 * 1000)),
+    maxDate: localDate(new Date(t + 89 * 24 * 3600 * 1000)),
+  };
+}

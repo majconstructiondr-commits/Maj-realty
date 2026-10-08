@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { mainNav } from "./nav";
 import { t } from "@/i18n";
 import { Icon } from "../ui/Icon";
@@ -9,7 +9,12 @@ import { Icon } from "../ui/Icon";
 export function Header({ logo, signedIn }: { logo: React.ReactNode; signedIn: boolean }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  useEffect(() => setOpen(false), [pathname]);
+  // Cerrar el menú al cambiar de página (ajuste durante el render, sin efecto).
+  const [lastPath, setLastPath] = useState(pathname);
+  if (lastPath !== pathname) {
+    setLastPath(pathname);
+    setOpen(false);
+  }
   const isCurrent = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
   return (
     <header className="site-header">

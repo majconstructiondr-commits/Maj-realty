@@ -68,12 +68,12 @@ export async function publisherMembers(supabase: Db) {
   return ids.map((id) => ({ id, label: labelFor(labels, id) })).sort((a, b) => a.label.localeCompare(b.label, "es"));
 }
 
-export async function findUserByEmail(supabase: Db, email: string) {
+export async function findUserByEmail(supabase: Db, email: string): Promise<{ user: UserLabel; error?: undefined } | { error: string; user?: undefined }> {
   const { data, error } = await supabase.rpc("staff_find_user", { p_email: email });
-  if (error) return { error: dbErrorMessage(error) } as const;
+  if (error) return { error: dbErrorMessage(error) };
   const row = ((data ?? []) as UserLabel[])[0];
-  if (!row) return { error: "No existe una cuenta registrada con ese correo." } as const;
-  return { user: row } as const;
+  if (!row) return { error: "No existe una cuenta registrada con ese correo." };
+  return { user: row };
 }
 
 export async function getSetting<T = unknown>(supabase: Db, key: string): Promise<T | null> {

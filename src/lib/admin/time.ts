@@ -31,3 +31,8 @@ export function addDays(day: string, n: number) {
 export function currentPeriod(now = new Date()) {
   return localDay(now).slice(0, 7);
 }
+
+/** Instante actual desplazado n horas (negativo = pasado), en ISO UTC. */
+export function isoFromNow(hours: number) {
+  return new Date(Date.now() + hours * 3600 * 1000).toISOString();
+}

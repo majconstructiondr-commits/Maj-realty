@@ -58,6 +58,10 @@ export async function CatalogPage({ operation, f }: { operation: "venta" | "rent
             <p className="xs muted">Al ordenar por precio se agrupan por moneda (RD$ y US$ no se mezclan). Filtra por moneda para comparar.</p>
           ) : null}
 
+          <p className="xs">
+            <Link href={`/panel/busquedas?guardar=${encodeURIComponent(here)}`}>Guardar esta búsqueda</Link>
+          </p>
+
           {res.error ? <p className="alert alert-error" role="alert">{res.error}</p> : null}
 
           {res.items.length === 0 && !res.error ? (

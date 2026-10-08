@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, expect, it } from "vitest";
+import { afterAll, beforeAll, it } from "vitest";
 import type { Client } from "pg";
 import { as, connect, createUser, expectError } from "./helpers";
 

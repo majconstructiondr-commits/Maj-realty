@@ -65,6 +65,13 @@ scripts/               copias de seguridad, prueba de restauración, verificaci�
 docs/DESPLIEGUE.md     despliegue, dominio, HTTPS, correo, tareas programadas, copias
 ```
 
+## Rutas principales
+
+- Públicas: `/`, `/venta`, `/renta`, `/inmuebles/[ref]`, servicios, `/publica-tu-propiedad`, `/nosotros`, `/contacto`, `/legal/*`.
+- Cuenta: `/cuenta/ingresar`, `/cuenta/registro`, `/cuenta/recuperar`, `/cuenta/seguridad` (MFA).
+- Usuario (`/panel`): solicitudes, cotizaciones, mensajes, visitas, favoritos, búsquedas, publicaciones (editor por pasos), licencia y pagos, agencia, propiedades administradas.
+- Personal MAJ (`/admin`, exige MFA): resumen, inmuebles y revisión, solicitudes/CRM, visitas, mensajes, cotizaciones, administración de inmuebles, licencias y planes, publicadores, usuarios, reportes, contenido, configuración y auditoría. Exportación CSV en `/api/admin/export/*`.
+
 ## Configuración editable sin código
 
 *Panel MAJ → Configuración*: teléfonos, WhatsApp y regla de destino, texto sugerido de WhatsApp, horarios de citas, datos de empresa, límites anti-abuso, MFA del personal. *Contenido*: textos de páginas, documentos legales (reemplazan los borradores), portafolio, equipo, servicios legales habilitados y tasas de cambio.
@@ -79,6 +86,8 @@ docs/DESPLIEGUE.md     despliegue, dominio, HTTPS, correo, tareas programadas, c
 | Pasarela de pago de licencias | **No implementada**: pagos manuales con comprobante y revisión. Una pasarela requerirá eventos verificados, idempotencia, recibos y política de cancelación. |
 | API de WhatsApp | **No integrada**: solo enlaces `wa.me` y chat interno. |
 | Notificaciones por correo | Las notificaciones se guardan dentro de la plataforma; el envío por correo requiere SMTP y una función de envío. |
+| Avisos de búsquedas guardadas | Las búsquedas se guardan en *Mi cuenta*; el aviso automático de inmuebles nuevos **aún no está implementado**. |
+| Chat en tiempo real | Requiere la publicación `supabase_realtime` (migración `0012`, existe por defecto en Supabase). Sin ella, el chat se actualiza al recargar. |
 | Analítica / cookies de terceros | No instaladas. |
 | Revisión legal | Los documentos legales son **borradores** sujetos a revisión de abogado dominicano. |
 

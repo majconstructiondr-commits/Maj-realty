@@ -59,8 +59,8 @@ p { margin: 0 0 1em; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
 
 .container { width: 100%; max-width: var(--container); margin: 0 auto; padding: 0 16px; }
-.section { padding: 48px 0; }
-.section-sm { padding: 28px 0; }
+.section { padding-top: 48px; padding-bottom: 48px; }
+.section-sm { padding-top: 28px; padding-bottom: 28px; }
 .section-alt { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
 .eyebrow { text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.75rem; font-weight: 700; color: var(--gold-600); margin-bottom: 8px; display: block; }
 .lead { font-size: 1.1rem; color: var(--text-muted); max-width: 68ch; }

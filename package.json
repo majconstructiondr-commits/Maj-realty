@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run tests/unit",
+    "test:db": "bash scripts/db-test-reset.sh && vitest run tests/db",
+    "db:test:reset": "bash scripts/db-test-reset.sh",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "next": "16.4.0",
@@ -15,10 +19,13 @@
   },
   "devDependencies": {
     "@types/node": "^20",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
-    "typescript": "^5"
+    "pg": "^8.23.1",
+    "typescript": "^5",
+    "vitest": "^4.0.3"
   }
 }

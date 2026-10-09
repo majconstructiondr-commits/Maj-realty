@@ -10,9 +10,14 @@ jobs:
         run: |
           set -u
           base=https://majrealty.vercel.app
-          html=$(curl -sSL "$base/cuenta/ingresar")
-          for p in $(printf '%s' "$html" | grep -oE '/_next/static/[^"]+\.js' | sort -u); do
-            curl -sS "$base$p" >> bundle.js; echo >> bundle.js
+          for i in $(seq 1 16); do
+            rm -f bundle.js
+            html=$(curl -sSL "$base/cuenta/ingresar?t=$i")
+            for p in $(printf '%s' "$html" | grep -oE '/_next/static/[^"]+\.js' | sort -u); do
+              curl -sS "$base$p" >> bundle.js; echo >> bundle.js
+            done
+            grep -q sxsluxasqdmulelkisfe bundle.js && break
+            echo "Intento $i: aún no"; sleep 30
           done
           echo "Direcciones Supabase en el sitio:"; grep -oE 'https://[a-z0-9]{20}\.supabase\.co' bundle.js | sort | uniq -c || echo "ninguna"
           url=$(grep -oE 'https://[a-z0-9]{20}\.supabase\.co' bundle.js | head -1 || true)

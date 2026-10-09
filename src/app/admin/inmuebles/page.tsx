@@ -60,6 +60,7 @@ export default async function AdminProperties(props: PageProps<"/admin/inmuebles
   return (
     <>
       <PageHeader title="Inmuebles y revisión">
+        <Link className="btn btn-primary btn-sm" href="/admin/inmuebles/importar">Importar desde Excel</Link>
         <a className="btn btn-ghost btn-sm" href={exportHref}>Exportar CSV</a>
       </PageHeader>
 

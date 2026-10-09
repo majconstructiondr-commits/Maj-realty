@@ -23,6 +23,7 @@ Todas las cuentas deben crearse **a nombre de la empresa**, con correo de la emp
 2. Aplicar las migraciones **en orden** (`supabase/migrations/*.sql`):
    - Con la CLI: `npx supabase link --project-ref <ref>` y luego `npx supabase db push`.
    - O pegando cada archivo, en orden, en *SQL Editor*.
+   - O desde GitHub (sin instalar nada): en el repositorio, *Settings → Secrets and variables → Actions*, crear el secreto `SUPABASE_DB_URL` con la cadena de conexión **Session pooler** de Supabase (*Connect* → *Session pooler*, con la contraseña de la base de datos). Luego *Actions → Aplicar migraciones de base de datos → Run workflow*. El flujo también se ejecuta solo cuando una migración nueva llega a `main`, y nunca aplica dos veces la misma (`scripts/apply-migrations.sh`).
 3. **No** ejecutar `supabase/seed-demo.sql` en producción (solo para demostraciones).
 4. *Authentication → URL Configuration*:
    - *Site URL*: `https://<dominio-definitivo>`

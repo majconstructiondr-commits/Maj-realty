@@ -2,9 +2,14 @@
 // solo las variables NEXT_PUBLIC_* llegan al cliente.
 
 export const env = {
-  siteUrl: (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, ""),
-  supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-  supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+  // Dominio definitivo. Si aún no se define, en Vercel se usa su dominio de producción (*.vercel.app).
+  siteUrl: (
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL}` : "") ||
+    "http://localhost:3000"
+  ).replace(/\/$/, ""),
+  supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+  supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
   // Logo oficial recibido de MAJ (public/brand/). Puede sustituirse con NEXT_PUBLIC_LOGO_SRC.
   logoSrc: process.env.NEXT_PUBLIC_LOGO_SRC || "/brand/maj-realty-logo.webp",
   turnstileSiteKey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "",

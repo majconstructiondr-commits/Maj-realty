@@ -90,11 +90,11 @@ create policy assets_delete on storage.objects for delete to authenticated
 -- =====================================================================
 insert into public.site_settings (key, value, is_public, description) values
   ('company.name', '"MAJ REALTY SRL"', true, 'Nombre comercial'),
-  ('company.phones', '["809-770-6277", "849-272-5000"]', true, 'Teléfonos de contacto (confirmar el principal antes de publicar)'),
-  ('company.primary_phone', '"809-770-6277"', true, 'Teléfono principal (POR CONFIRMAR)'),
+  ('company.phones', '["849-802-8181", "809-770-6277", "849-272-5000"]', true, 'Teléfonos de contacto'),
+  ('company.primary_phone', '"849-802-8181"', true, 'Teléfono principal de contacto (indicado por MAJ)'),
   ('company.email', 'null', true, 'Correo de contacto (POR CONFIRMAR; no publicar uno propuesto como activo)'),
   ('company.address', 'null', true, 'Dirección física (POR CONFIRMAR)'),
-  ('company.rnc', 'null', true, 'RNC de MAJ REALTY SRL (POR CONFIRMAR; no reutilizar datos fiscales de otra empresa)'),
+  ('company.rnc', '"131090443"', true, 'RNC de MAJ REALTY SRL (indicado por MAJ)'),
   ('company.hours', 'null', true, 'Horario de atención visible (POR CONFIRMAR)'),
   ('company.data_confirmed', 'false', false, 'Marcar true cuando dirección, correo, RNC, horario y teléfono estén confirmados'),
   ('whatsapp.primary', '"18097706277"', true, 'WhatsApp principal (solo dígitos con código de país)'),

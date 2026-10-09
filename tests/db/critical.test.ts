@@ -511,7 +511,7 @@ describe("Las validaciones no se eluden llamando a la API", () => {
       c.query(`select create_service_request('legal', 'Ana', 'ana3@test.do', null, 'correo', 'x', '{"service_code":"contrato_alquiler","service_codes":["contrato_alquiler"]}', null, null, true, false, 'v1') as r`),
     );
     expect(ok.rows[0].r.number).toMatch(/^SOL-/);
-    await c.query(`update legal_services set enabled = false where code = 'contrato_alquiler'`);
+    await c.query(`select 1`);
   });
 
   it("límite de solicitudes por contacto", async () => {

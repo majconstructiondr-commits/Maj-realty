@@ -1,24 +1,23 @@
--- Catálogo ampliado de servicios legales inmobiliarios y solicitudes con varios servicios.
--- Los servicios nuevos quedan DESHABILITADOS hasta que MAJ indique el profesional responsable.
+-- Servicios de gestión documental que MAJ REALTY ofrece sin abogado (decisión de MAJ, 2026-10-09).
+-- Quedan habilitados con MAJ REALTY como responsable. Los servicios que requieren abogado o notario
+-- siguen deshabilitados hasta que MAJ indique el profesional responsable.
 
 update public.legal_services
    set name = 'Estado jurídico del inmueble',
-       description = 'Certificación del estado jurídico ante el Registro de Títulos: dueño, cargas, hipotecas y oposiciones.'
+       description = 'Solicitud de la certificación del estado jurídico ante el Registro de Títulos: dueño, cargas, hipotecas y oposiciones.'
  where code = 'certificacion_estado_juridico' and name = 'Certificación del estado jurídico';
 
 insert into public.legal_services (code, name, description, enabled, sort_order) values
-  ('contrato_alquiler', 'Contrato de alquiler', 'Redacción o revisión de contrato de alquiler residencial o comercial.', false, 7),
-  ('contrato_venta', 'Contrato de venta de inmueble', 'Redacción del contrato de compraventa del inmueble.', false, 8),
-  ('promesa_venta', 'Contrato de promesa de venta', 'Contrato de promesa de venta con plazos y forma de pago.', false, 9),
-  ('revision_compra', 'Revisión completa antes de comprar', 'Revisión de título, cargas, impuestos y documentos del vendedor antes de firmar.', false, 10),
-  ('poder_representacion', 'Poder de representación', 'Poder notarial para comprar, vender o administrar un inmueble.', false, 11),
-  ('legalizacion_firmas', 'Legalización de firmas', 'Legalización notarial de firmas en contratos y documentos.', false, 12),
-  ('impuestos_transferencia', 'Impuestos de transferencia (DGII)', 'Cálculo y pago de impuestos de transferencia inmobiliaria.', false, 13),
-  ('duplicado_titulo', 'Duplicado de certificado de título', 'Solicitud por pérdida o deterioro del certificado de título.', false, 14),
-  ('hipoteca', 'Inscripción o cancelación de hipoteca', 'Gestión de hipotecas ante el Registro de Títulos.', false, 15),
-  ('desalojo', 'Desalojo y cobro de alquileres', 'Acciones por falta de pago o fin de contrato de alquiler.', false, 16),
-  ('condominio', 'Régimen de condominio', 'Constitución de condominio y su reglamento.', false, 17)
+  ('verificacion_compra', 'Verificación de documentos antes de comprar', 'Revisamos que el título, el estado jurídico y los impuestos del inmueble estén en orden. No sustituye la opinión de un abogado.', false, 7),
+  ('contrato_alquiler', 'Contrato de alquiler', 'Preparación del contrato de alquiler con modelo estándar. La legalización de firmas la hace un notario.', false, 8),
+  ('impuestos_transferencia', 'Impuestos de transferencia (DGII)', 'Cálculo y pago de impuestos de transferencia inmobiliaria ante la DGII.', false, 9),
+  ('ipi', 'Impuesto al patrimonio inmobiliario (IPI)', 'Declaración y pago del IPI ante la DGII.', false, 10)
 on conflict (code) do nothing;
+
+update public.legal_services
+   set enabled = true, responsible_professional = 'MAJ REALTY (gestión documental)'
+ where code in ('certificacion_estado_juridico', 'verificacion_compra', 'contrato_alquiler', 'impuestos_transferencia', 'ipi')
+   and not enabled;
 
 -- Una solicitud legal puede pedir varios servicios (details.service_codes). Todos deben estar habilitados.
 create or replace function public.check_legal_service_codes()

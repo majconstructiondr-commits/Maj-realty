@@ -133,8 +133,9 @@ export default async function ListingPage(props: PageProps<"/inmuebles/[ref]">) 
         <div>
           <span className="eyebrow">{PROPERTY_TYPES[l.property_type]} · Ref. {l.code}</span>
           <h1 style={{ marginBottom: 6 }}>{l.title}</h1>
-          <p className="muted row" style={{ gap: 6, margin: 0 }}>
-            <Icon name="pin" size={16} /> {[l.sector, l.municipality, l.province].filter(Boolean).join(", ")} (ubicación aproximada)
+          <p className="muted" style={{ display: "flex", gap: 6, alignItems: "flex-start", margin: 0 }}>
+            <Icon name="pin" size={16} />
+            <span>{[l.sector, l.municipality, l.province].filter(Boolean).join(", ")} (ubicación aproximada)</span>
           </p>
         </div>
         <div className="row">
@@ -144,7 +145,7 @@ export default async function ListingPage(props: PageProps<"/inmuebles/[ref]">) 
       </div>
 
       <div className="detail-layout" style={{ marginTop: 18 }}>
-        <div className="stack" style={{ display: "grid", gap: 20 }}>
+        <div className="stack" style={{ display: "grid", gap: 20, gridTemplateColumns: "minmax(0, 1fr)" }}>
           <Gallery media={media} title={l.title} demo={demo} />
 
           <div className="mobile-only card card-body">

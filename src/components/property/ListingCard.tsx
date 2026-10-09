@@ -35,8 +35,9 @@ export function ListingCard({ l, operation, back }: { l: CatalogListing; operati
           {PROPERTY_TYPES[l.property_type]} · Ref. {l.code}
         </span>
         <h3 className="card-title">{l.title}</h3>
-        <span className="small muted row" style={{ gap: 4 }}>
-          <Icon name="pin" size={14} /> {[l.sector, l.municipality, l.province].filter(Boolean).join(", ")}
+        <span className="small muted" style={{ display: "flex", gap: 4, alignItems: "flex-start" }}>
+          <Icon name="pin" size={14} />
+          <span>{[l.sector, l.municipality, l.province].filter(Boolean).join(", ")}</span>
         </span>
         <div style={{ marginTop: "auto" }}>
           {showSale ? <PriceLine label={showRent ? "Venta" : undefined} amount={l.sale_price} currency={l.sale_currency} /> : null}

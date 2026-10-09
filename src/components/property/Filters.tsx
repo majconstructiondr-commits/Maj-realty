@@ -1,10 +1,11 @@
 import { FEATURES, PROPERTY_TYPES, PROVINCES } from "@/lib/catalog/definitions";
 import { activeFilterCount, type SearchFilters } from "@/lib/catalog/search";
+import { FiltersPanel } from "./FiltersPanel";
 
 export function Filters({ f, action }: { f: SearchFilters; action: string }) {
   const n = activeFilterCount(f);
   return (
-    <details className="card filters" open>
+    <FiltersPanel>
       <summary>
         Filtros {n ? <span className="badge badge-gold">{n} activos</span> : null}
       </summary>
@@ -103,6 +104,6 @@ export function Filters({ f, action }: { f: SearchFilters; action: string }) {
           <a className="btn btn-ghost" href={action}>Limpiar</a>
         </div>
       </form>
-    </details>
+    </FiltersPanel>
   );
 }

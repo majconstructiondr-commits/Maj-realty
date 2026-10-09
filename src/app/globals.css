@@ -162,8 +162,8 @@ p { margin: 0 0 1em; }
 .brand:hover { color: #fff; }
 .logo-placeholder {
   display: inline-flex; align-items: center; justify-content: center; text-align: center;
-  width: 48px; height: 48px; border: 2px dashed var(--gold-500); border-radius: 8px;
-  font-size: 0.5rem; line-height: 1.1; font-weight: 800; color: var(--gold-500); letter-spacing: 0.04em; flex-shrink: 0;
+  width: 52px; height: 48px; border: 2px dashed var(--gold-500); border-radius: 8px; padding: 2px; overflow: hidden;
+  font-size: 0.42rem; line-height: 1.1; font-weight: 800; color: var(--gold-500); letter-spacing: 0.04em; flex-shrink: 0;
 }
 .brand-name { font-family: var(--font-serif); font-size: 1.15rem; letter-spacing: 0.06em; white-space: nowrap; }
 .brand-name small { display: block; font-family: var(--font-sans); font-size: 0.62rem; letter-spacing: 0.24em; color: var(--silver-300); }
@@ -232,14 +232,14 @@ p { margin: 0 0 1em; }
 .pagination [aria-current="page"] { background: var(--navy-800); color: #fff; border-color: var(--navy-800); }
 
 /* Ficha */
-.gallery { display: grid; gap: 8px; grid-template-columns: 1fr; }
+.gallery { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr); min-width: 0; }
 .gallery-main { aspect-ratio: 16 / 10; border-radius: var(--radius); overflow: hidden; background: var(--silver-100); }
 .gallery-main img { width: 100%; height: 100%; object-fit: cover; }
 .thumbs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
 .thumbs button { border: 2px solid transparent; padding: 0; border-radius: 8px; overflow: hidden; flex: 0 0 96px; height: 72px; cursor: pointer; background: none; }
 .thumbs button[aria-current="true"] { border-color: var(--gold-500); }
 .thumbs img { width: 100%; height: 100%; object-fit: cover; }
-.detail-layout { display: grid; gap: 24px; grid-template-columns: 1fr; }
+.detail-layout { display: grid; gap: 24px; grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 1024px) { .detail-layout { grid-template-columns: minmax(0, 1fr) 360px; } .sticky-aside { position: sticky; top: 84px; } }
 .facts { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (min-width: 640px) { .facts { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

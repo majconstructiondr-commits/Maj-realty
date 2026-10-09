@@ -28,16 +28,6 @@ export default async function Page() {
             <div className="alert alert-info small">
               Una solicitud no es un trámite oficial realizado ni una opinión jurídica. Cada caso lo revisa un profesional competente antes de cotizar. Tus datos y archivos son privados.
             </div>
-            {services.length ? (
-              <>
-                <h2>Servicios disponibles</h2>
-                <div className="grid-2">
-                  {services.map((sv) => (
-                    <div key={sv.code} className="card card-body"><h3>{sv.name}</h3>{sv.description ? <p className="small muted" style={{ margin: 0 }}>{sv.description}</p> : null}</div>
-                  ))}
-                </div>
-              </>
-            ) : null}
             <ContactButtons s={s} servicio="gestiones legales de propiedades" formHref="#solicitud" />
           </div>
           <div className="card card-body" id="solicitud">
@@ -46,12 +36,20 @@ export default async function Page() {
               <RequestForm kind="legal" allowFiles filesLabel="Documentos (opcional, privados)" messageLabel="Comentarios adicionales">
                 <fieldset className="fieldset">
                   <legend>Tu caso</legend>
-                  <div className="field">
-                    <label htmlFor="leg-srv" className="required">Servicio</label>
-                    <select id="leg-srv" name="service_code" className="select" required defaultValue="">
-                      <option value="" disabled>Seleccione…</option>
-                      {services.map((sv) => <option key={sv.code} value={sv.code}>{sv.name}</option>)}
-                    </select>
+                  <div className="field" role="group" aria-labelledby="leg-srv">
+                    <span id="leg-srv" className="label required">Servicios que necesita</span>
+                    <span className="hint">Marque uno o varios.</span>
+                    <div className="service-pick">
+                      {services.map((sv) => (
+                        <label key={sv.code}>
+                          <input type="checkbox" name="service_codes" value={sv.code} />
+                          <span>
+                            <strong>{sv.name}</strong>
+                            {sv.description ? <span className="small muted">{sv.description}</span> : null}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                   <div className="field" style={{ marginTop: 12 }}>
                     <label htmlFor="leg-ref">Inmueble o referencia (opcional)</label>

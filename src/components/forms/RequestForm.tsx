@@ -103,6 +103,10 @@ export function RequestForm(p: Props) {
   }
 
   const errors = state.status === "error" ? state.errors : undefined;
+  // Errores de campos propios de cada formulario (p. ej. casillas), que no tienen mensaje junto al campo.
+  const otherErrors = Object.entries(errors ?? {})
+    .filter(([k]) => !["contact_name", "contact_phone", "contact_email", "message", "contact_consent"].includes(k))
+    .map(([, m]) => m);
   const err = (n: string) => (errors?.[n] ? { "aria-invalid": true as const, "aria-describedby": `${n}-error` } : {});
 
   return (
@@ -190,7 +194,10 @@ export function RequestForm(p: Props) {
       {env.turnstileSiteKey ? <Turnstile siteKey={env.turnstileSiteKey} /> : null}
 
       {state.status === "error" ? (
-        <p className="alert alert-error" role="alert">{state.message}</p>
+        <div className="alert alert-error" role="alert">
+          {state.message}
+          {otherErrors.length ? <ul style={{ margin: "6px 0 0" }}>{otherErrors.map((m) => <li key={m}>{m}</li>)}</ul> : null}
+        </div>
       ) : null}
       {!hasSupabase ? (
         <p className="alert alert-warning small">Modo demostración: este formulario no guarda datos todavía.</p>

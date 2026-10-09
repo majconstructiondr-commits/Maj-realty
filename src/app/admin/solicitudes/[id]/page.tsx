@@ -28,6 +28,10 @@ export default async function RequestDetail(props: PageProps<"/admin/solicitudes
   if (!data) notFound();
   const r = data as Req;
 
+  const legalCodes = [
+    ...(Array.isArray(r.details?.service_codes) ? (r.details.service_codes as unknown[]).map(String) : []),
+    ...(typeof r.details?.service_code === "string" ? [r.details.service_code] : []),
+  ];
   const [events, files, quotes, convs, appts, consents, prop, staff, publishers, legal] = await Promise.all([
     supabase.from("request_events").select("*").eq("request_id", id).order("created_at", { ascending: false }),
     supabase.from("request_files").select("*").eq("request_id", id).order("created_at"),
@@ -38,9 +42,7 @@ export default async function RequestDetail(props: PageProps<"/admin/solicitudes
     r.property_id ? supabase.from("properties").select("id, code, title, status").eq("id", r.property_id).maybeSingle() : Promise.resolve({ data: null }),
     staffMembers(supabase),
     publisherMembers(supabase),
-    r.kind === "legal" && typeof r.details?.service_code === "string"
-      ? supabase.from("legal_services").select("name, responsible_professional").eq("code", r.details.service_code as string).maybeSingle()
-      : Promise.resolve({ data: null }),
+    r.kind === "legal" ? supabase.from("legal_services").select("code, name, responsible_professional").in("code", legalCodes) : Promise.resolve({ data: null }),
   ]);
   const evRows = (events.data ?? []) as Ev[];
   const assignIds = evRows.filter((e) => e.kind === "asignacion").flatMap((e) => [...(e.from_value ?? "").split("/"), ...(e.to_value ?? "").split("/")]);
@@ -60,9 +62,16 @@ export default async function RequestDetail(props: PageProps<"/admin/solicitudes
       default: return e.body ?? "";
     }
   };
-  const legalSvc = legal.data as { name: string; responsible_professional: string | null } | null;
+  const legalSvcs = new Map(((legal.data ?? []) as { code: string; name: string; responsible_professional: string | null }[]).map((s) => [s.code, s]));
+  const svcLabel = (code: string) => {
+    const s = legalSvcs.get(code);
+    return s ? `${s.name}${s.responsible_professional ? ` (responsable: ${s.responsible_professional})` : ""}` : code;
+  };
   const details = { ...r.details };
-  if (legalSvc) details.service_code = `${legalSvc.name}${legalSvc.responsible_professional ? ` (responsable: ${legalSvc.responsible_professional})` : ""}`;
+  if (Array.isArray(details.service_codes)) {
+    details.service_codes = (details.service_codes as unknown[]).map((c) => svcLabel(String(c))).join("\n");
+    delete details.service_code;
+  } else if (typeof details.service_code === "string") details.service_code = svcLabel(details.service_code);
 
   return (
     <>

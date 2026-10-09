@@ -90,7 +90,7 @@ export const DETAIL_LABELS: Record<string, string> = {
   disponible_desde: "Disponible desde", unidades: "Unidades", ocupacion: "Ocupación", servicios: "Servicios solicitados",
   situacion_actual: "Situación actual", tipo_trabajo: "Tipo de trabajo", area_m2: "Área (m²)", alcance: "Alcance",
   presupuesto: "Presupuesto", fecha_deseada: "Fecha deseada", urgencia: "Urgencia", visita_tecnica: "Desea visita técnica",
-  servicio: "Servicio", referencia_inmueble: "Referencia del inmueble", service_code: "Servicio legal", descripcion: "Descripción",
+  servicio: "Servicio", referencia_inmueble: "Referencia del inmueble", service_code: "Servicio legal", service_codes: "Servicios legales", descripcion: "Descripción",
   operacion: "Operación", zonas: "Zonas", presupuesto_max: "Presupuesto máximo", habitaciones: "Habitaciones", fecha: "Fecha",
   tipo_publicador: "Tipo de publicador",
   cobro_rentas: "Cobro de rentas", mantenimiento: "Mantenimiento", busqueda_inquilinos: "Búsqueda de inquilinos",

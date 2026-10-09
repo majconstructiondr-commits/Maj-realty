@@ -57,7 +57,17 @@ export const detailSchemas = {
     servicio: z.enum(["remodelacion", "administracion", "legal", "venta", "renta", "otro"]),
     referencia_inmueble: optS(60), alcance: s(2000).min(10, "Describa el alcance (mínimo 10 caracteres)"),
   }),
-  legal: z.object({ service_code: s(40).min(2, "Seleccione el servicio"), descripcion: s(2000).min(10, "Describa su caso (mínimo 10 caracteres)"), referencia_inmueble: optS(60) }),
+  legal: z.object({
+    service_codes: z.preprocess(
+      (v) => (Array.isArray(v) ? v : v ? [v] : []),
+      z.array(z.string().regex(/^[a-z0-9_]{2,40}$/)).min(1, "Seleccione al menos un servicio").max(20),
+    ),
+    descripcion: s(2000).min(10, "Describa su caso (mínimo 10 caracteres)"), referencia_inmueble: optS(60),
+  }).transform(({ service_codes, ...d }) => {
+    const codes = [...new Set(service_codes)];
+    // service_code (el primero) mantiene la validación existente de la base de datos.
+    return { ...d, service_code: codes[0], service_codes: codes };
+  }),
   busco_propiedad: z.object({
     operacion: z.enum(["venta", "renta"]), zonas: s(300).min(2, "Indique al menos una zona"),
     presupuesto_max: optN, moneda: currency, tipo: type, habitaciones: optN, fecha: optS(20),

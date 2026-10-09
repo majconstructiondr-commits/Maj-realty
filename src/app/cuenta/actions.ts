@@ -88,6 +88,8 @@ export async function signUp(_p: ActionState, fd: FormData): Promise<ActionState
     }
     if (error.status === 429) return TOO_MANY;
     if (error.code !== "user_already_exists" && error.code !== "email_exists") {
+      // Sin el correo: solo el código, para poder diagnosticar en los registros de Vercel.
+      console.error("signUp falló", { code: error.code, status: error.status });
       return { status: "error", message: "No pudimos completar el registro. Intente de nuevo en unos minutos." };
     }
   }

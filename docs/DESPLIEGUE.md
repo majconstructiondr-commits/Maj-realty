@@ -104,7 +104,7 @@ Los números se editan en *Panel MAJ → Configuración* (`whatsapp.primary`, `w
 ## 8. Antes del lanzamiento
 
 ```bash
-SUPABASE_DB_URL='postgresql://…' NEXT_PUBLIC_LOGO_SRC=/brand/logo.svg NEXT_PUBLIC_SITE_URL=https://majrealty.com.do node scripts/check-launch.mjs
+SUPABASE_DB_URL='postgresql://…' NEXT_PUBLIC_SITE_URL=https://majrealty.com.do node scripts/check-launch.mjs
 ```
 
 Comprueba: logo, dominio, ausencia de datos de demostración, datos de la empresa confirmados (dirección, correo, RNC, horario, teléfono), MFA del personal, planes con precio y cuota, y que exista un administrador. Además, manualmente:

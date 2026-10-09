@@ -80,7 +80,7 @@ docs/DESPLIEGUE.md     despliegue, dominio, HTTPS, correo, tareas programadas, c
 
 | Integración | Estado |
 |---|---|
-| Logo oficial | **Pendiente**: hay un espacio identificado “LOGO PENDIENTE”. Copiar el archivo a `public/brand/` y definir `NEXT_PUBLIC_LOGO_SRC`. |
+| Logo oficial | **Incorporado** (`public/brand/maj-realty-logo.png`, original sin alterar, y copias `.webp` redimensionadas para la web). Se puede sustituir con `NEXT_PUBLIC_LOGO_SRC`. |
 | Dominio `majrealty.com.do` (propuesta) | **Pendiente** de disponibilidad y registro a nombre de la empresa. |
 | Correo corporativo y SMTP | **Pendiente**. No se muestra ningún correo hasta configurarlo. |
 | Pasarela de pago de licencias | **No implementada**: pagos manuales con comprobante y revisión. Una pasarela requerirá eventos verificados, idempotencia, recibos y política de cancelación. |

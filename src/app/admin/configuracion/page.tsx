@@ -32,7 +32,7 @@ export default async function AdminSettings() {
     { ok: get("company.data_confirmed") === true, label: "Datos de la empresa confirmados (company.data_confirmed)", detail: pending.length ? `Por confirmar: ${pending.join(", ")}` : undefined },
     { ok: demoTotal === 0, label: "Sin datos de demostración en la base", detail: `Inmuebles: ${demoProps.count ?? 0} · solicitudes: ${demoReqs.count ?? 0} · cotizaciones: ${demoQuotes.count ?? 0}` },
     { ok: get("site.show_demo_data") === false, label: "Datos de demostración ocultos en el catálogo (site.show_demo_data = false)" },
-    { ok: Boolean(env.logoSrc), label: "Logo oficial configurado (NEXT_PUBLIC_LOGO_SRC)", detail: env.logoSrc ? env.logoSrc : "Se muestra un logo provisional" },
+    { ok: Boolean(env.logoSrc), label: "Logo oficial configurado", detail: env.logoSrc },
     { ok: !/borrador/i.test(legalVersion), label: "Documentos legales revisados por abogado", detail: `Versión actual: ${legalVersion || "sin versión"}` },
     { ok: get("security.require_mfa_for_staff") === true, label: "Segundo factor obligatorio para el personal" },
     { ok: (plansNoPrice.count ?? 0) === 0, label: "Precios de planes definidos", detail: `${plansNoPrice.count ?? 0} plan(es) activos con precio por definir` },

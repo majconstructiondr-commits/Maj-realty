@@ -42,7 +42,7 @@ test("no hay confirmaciones falsas cuando no se guarda", async ({ page }) => {
   await page.getByLabel(/Autorizo a MAJ REALTY/).check();
   await page.waitForTimeout(2700);
   await page.getByRole("button", { name: "Enviar solicitud" }).click();
-  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: /NO se guardó/ })).toBeVisible();
   await expect(page.getByText("Solicitud registrada")).toHaveCount(0);
 });
 

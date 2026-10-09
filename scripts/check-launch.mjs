@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 // Lista de verificación antes del lanzamiento. Uso:
-//   SUPABASE_DB_URL=postgresql://... NEXT_PUBLIC_LOGO_SRC=/brand/logo.svg node scripts/check-launch.mjs
+//   SUPABASE_DB_URL=postgresql://... node scripts/check-launch.mjs
 // Sale con código 1 si algo bloquea el lanzamiento.
+import { existsSync } from "node:fs";
 import pg from "pg";
 
 const url = process.env.SUPABASE_DB_URL;
 const problems = [];
 const ok = [];
-if (!process.env.NEXT_PUBLIC_LOGO_SRC) problems.push("Falta el logo oficial (NEXT_PUBLIC_LOGO_SRC).");
+if (!process.env.NEXT_PUBLIC_LOGO_SRC && !existsSync("public/brand/maj-realty-logo.webp")) problems.push("Falta el logo oficial (public/brand/ o NEXT_PUBLIC_LOGO_SRC).");
 else ok.push("Logo configurado.");
 if (!process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_SITE_URL.includes("localhost")) problems.push("NEXT_PUBLIC_SITE_URL no apunta al dominio definitivo.");
 if (!url) {

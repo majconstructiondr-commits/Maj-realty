@@ -10,9 +10,9 @@ export function Footer({ s }: { s: SiteSettings }) {
       <div className="container section">
         <div className="grid-4">
           <div className="stack">
-            <div className="brand">
-              <BrandLogo />
-            </div>
+            <Link href="/" className="footer-logo" aria-label="MAJ REALTY, ir al inicio">
+              <BrandLogo variant="footer" />
+            </Link>
             <p className="small">Venta, renta, administración, remodelaciones y gestiones de propiedades en República Dominicana.</p>
           </div>
           <div>

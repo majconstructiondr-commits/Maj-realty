@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandLogo } from "@/components/layout/BrandLogo";
 import { HeroSearch } from "@/components/property/HeroSearch";
 import { ListingCard } from "@/components/property/ListingCard";
 import { ContactButtons } from "@/components/ui/ContactButtons";
@@ -8,15 +9,39 @@ import { getSiteSettings } from "@/lib/site";
 import { SERVICES } from "@/lib/services";
 import { getTeam } from "@/lib/team";
 
+const HERO_LINES = [
+  { label: "Residencial", icon: "home" },
+  { label: "Comercial", icon: "building" },
+  { label: "Remodelaciones", icon: "helmet" },
+  { label: "Inversión", icon: "invest" },
+] as const;
+
 export default async function HomePage() {
   const [{ items, demo }, s, team] = await Promise.all([featuredListings(6), getSiteSettings(), getTeam()]);
   return (
     <>
       <section className="hero">
         <div className="container">
-          <span className="eyebrow">MAJ REALTY SRL · República Dominicana</span>
-          <h1>Encuentra, vende o administra tu propiedad con confianza</h1>
-          <p>Venta, renta, administración, remodelaciones, cotizaciones y gestiones de propiedades, con información clara en cada paso.</p>
+          <div className="hero-grid">
+            <div className="hero-logo">
+              <BrandLogo variant="hero" />
+            </div>
+            <div>
+              <p className="hero-tagline">
+                Venta<span aria-hidden="true">|</span>Renta<span aria-hidden="true">|</span>Remodelaciones
+              </p>
+              <h1>Encuentra, vende o administra tu propiedad con confianza</h1>
+              <p className="lead">Venta, renta, administración, remodelaciones, cotizaciones y gestiones de propiedades en República Dominicana, con información clara en cada paso.</p>
+              <ul className="hero-lines" aria-label="Áreas de trabajo">
+                {HERO_LINES.map((x) => (
+                  <li key={x.label}>
+                    <span className="line-icon"><Icon name={x.icon} size={20} /></span>
+                    {x.label}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
           <HeroSearch />
         </div>
       </section>

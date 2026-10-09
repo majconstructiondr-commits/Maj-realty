@@ -1,7 +1,7 @@
 // Iconos SVG en línea (sin dependencias externas)
 type Name =
   | "whatsapp" | "search" | "bed" | "bath" | "car" | "area" | "pin" | "heart" | "share" | "flag" | "calendar"
-  | "chat" | "info" | "home" | "key" | "building" | "tools" | "doc" | "scale" | "phone" | "mail" | "check" | "menu" | "user";
+  | "chat" | "info" | "home" | "key" | "building" | "tools" | "doc" | "scale" | "phone" | "mail" | "check" | "menu" | "user" | "helmet" | "invest";
 
 const paths: Record<Name, string> = {
   whatsapp: "M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.9 2.1c.1.2.1.4 0 .5l-.3.5-.4.4c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.2.5.1.7-.1l.9-1.1c.2-.3.4-.2.7-.1l2 1c.3.1.5.2.5.3.1.2.1.7-.2 1.4z",
@@ -27,6 +27,8 @@ const paths: Record<Name, string> = {
   mail: "M3 5h18v14H3V5zm2 2v.5l7 4.5 7-4.5V7H5zm14 2.8l-7 4.5-7-4.5V17h14V9.8z",
   check: "M9 16.2l-3.5-3.5L4 14.2l5 5 11-11-1.5-1.5L9 16.2z",
   menu: "M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z",
+  helmet: "M11 4h2a7 7 0 0 1 7 7v3h2v3H2v-3h2v-3a7 7 0 0 1 7-7zm0 2.1A5 5 0 0 0 6 11v3h12v-3a5 5 0 0 0-5-4.9V10h-2V6.1zM3 19h18v2H3v-2z",
+  invest: "M3 20h18v2H3v-2zm1-3l5.5-5.5 3.5 3.5 5.6-5.6H16V7.4h5v5h-2V10.9l-6 6-3.5-3.5L5.4 18 4 17z",
   user: "M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zm0 2c-4.4 0-8 2.2-8 5v2h16v-2c0-2.8-3.6-5-8-5z",
 };
 

@@ -1,0 +1,47 @@
+/* Estilos del editor de publicaciones y paneles de vendedor (complementan globals.css) */
+.le-actions { justify-content: flex-end; position: sticky; bottom: 0; background: var(--bg); padding: 10px 0; z-index: 5; border-top: 1px solid var(--border); }
+.le-num-grid { display: grid; gap: 12px; grid-template-columns: 1fr; }
+@media (min-width: 640px) { .le-num-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .le-num-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.le-num { display: grid; gap: 6px; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; min-width: 0; }
+.le-modes { display: flex; flex-wrap: wrap; gap: 6px; }
+.le-modes .chip { padding: 6px 10px; font-size: 0.82rem; }
+.le-num .input:disabled { background: var(--silver-100); color: var(--text-muted); }
+.le-feature-grid { display: grid; gap: 12px; grid-template-columns: 1fr; }
+@media (min-width: 720px) { .le-feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.le-feature { display: grid; gap: 6px; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; min-width: 0; }
+.le-media-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.le-media-item { display: grid; grid-template-columns: 1fr; gap: 12px; padding: 12px; }
+@media (min-width: 640px) { .le-media-item { grid-template-columns: 180px minmax(0, 1fr); } }
+.le-thumb { aspect-ratio: 4 / 3; background: var(--silver-100); border-radius: var(--radius-sm); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.le-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.le-media-body { min-width: 0; }
+.le-link-list { list-style: none; padding: 0; margin: 0 0 8px; display: grid; gap: 8px; }
+.le-preview { container-type: inline-size; display: grid; gap: 14px; min-width: 0; }
+.le-preview h2 { font-size: 1.5rem; }
+.le-facts { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@container (min-width: 560px) { .le-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@container (min-width: 820px) { .le-facts { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.le-preview-grid { display: grid; gap: 20px; grid-template-columns: 1fr; align-items: start; }
+@media (min-width: 1200px) { .le-preview-grid { grid-template-columns: minmax(0, 1fr) 410px; } }
+.le-phone { width: 100%; max-width: 410px; margin: 0 auto; border: 10px solid var(--navy-900); border-radius: 32px; background: var(--bg); box-shadow: var(--shadow-lg); overflow: hidden; }
+.le-phone-screen { height: 760px; max-height: 80vh; overflow-y: auto; padding: 12px; }
+.le-phone-caption { text-align: center; font-size: 0.8rem; color: var(--text-muted); margin-top: 8px; }
+.le-checklist { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.le-checklist li { display: flex; gap: 8px; align-items: baseline; }
+.le-ok { color: var(--success); font-weight: 700; }
+.le-miss { color: var(--danger); font-weight: 700; }
+.le-listing { display: grid; gap: 10px; padding: 16px; }
+.le-stats { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.86rem; color: var(--text-muted); }
+.le-quick { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.le-quick form { display: inline-flex; }
+.le-quick details { width: 100%; }
+.le-quick details[open] { padding: 8px 0; }
+.le-step-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; counter-reset: lestep; }
+.le-step-list li { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; align-items: start; }
+.le-step-dot { width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.85rem; border: 2px solid var(--silver-300); color: var(--navy-700); background: #fff; }
+.le-step-dot.done { background: var(--success); border-color: var(--success); color: #fff; }
+.le-step-dot.current { background: var(--navy-800); border-color: var(--navy-800); color: var(--gold-500); }
+.le-meter { height: 10px; border-radius: 999px; background: var(--silver-100); overflow: hidden; border: 1px solid var(--border); }
+.le-meter > span { display: block; height: 100%; background: var(--navy-700); }
+.le-meter.full > span { background: var(--danger); }

@@ -150,6 +150,11 @@ input[type="date"].input, input[type="datetime-local"].input { -webkit-appearanc
 .input[aria-invalid="true"], .select[aria-invalid="true"], .textarea[aria-invalid="true"] { border-color: var(--danger); }
 .check { display: flex; gap: 10px; align-items: flex-start; font-size: 0.92rem; }
 .check input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--navy-800); flex-shrink: 0; }
+.service-pick { display: grid; gap: 8px; margin-top: 8px; max-height: 460px; overflow-y: auto; padding-right: 4px; }
+.service-pick label { font-weight: 400; display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); cursor: pointer; }
+.service-pick label:has(input:checked) { border-color: var(--gold-500); background: var(--gold-100); }
+.service-pick input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--navy-800); flex-shrink: 0; }
+.service-pick label > span { display: flex; flex-direction: column; gap: 2px; }
 .fieldset { border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin: 0; background: var(--surface); min-width: 0; }
 .fieldset legend { font-weight: 700; color: var(--navy-800); padding: 0 6px; }
 .form-grid { display: grid; gap: 14px; grid-template-columns: 1fr; }

@@ -499,6 +499,21 @@ describe("Las validaciones no se eluden llamando a la API", () => {
     );
   });
 
+  it("solicitud legal con varios servicios exige que todos estén habilitados", async () => {
+    await c.query(`update legal_services set enabled = true, responsible_professional = 'Prueba' where code = 'contrato_alquiler'`);
+    await expectError(
+      as(c, "anon", () =>
+        c.query(`select create_service_request('legal', 'Ana', 'ana3@test.do', null, 'correo', 'x', '{"service_code":"contrato_alquiler","service_codes":["contrato_alquiler","deslinde"]}', null, null, true, false, 'v1')`),
+      ),
+      /no está habilitado/,
+    );
+    const ok = await as(c, "anon", () =>
+      c.query(`select create_service_request('legal', 'Ana', 'ana3@test.do', null, 'correo', 'x', '{"service_code":"contrato_alquiler","service_codes":["contrato_alquiler"]}', null, null, true, false, 'v1') as r`),
+    );
+    expect(ok.rows[0].r.number).toMatch(/^SOL-/);
+    await c.query(`update legal_services set enabled = false where code = 'contrato_alquiler'`);
+  });
+
   it("límite de solicitudes por contacto", async () => {
     const call = () =>
       as(c, "anon", () =>

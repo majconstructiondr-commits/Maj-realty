@@ -1,0 +1,23 @@
+name: Diagnóstico de conexión
+on:
+  push:
+    branches: [claude/diagnostico]
+jobs:
+  revisar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Proyecto Supabase usado por el sitio publicado
+        run: |
+          set -u
+          base=https://majrealty.vercel.app
+          html=$(curl -sSL "$base/cuenta/ingresar")
+          for p in $(printf '%s' "$html" | grep -oE '/_next/static/[^"]+\.js' | sort -u); do
+            curl -sS "$base$p" >> bundle.js; echo >> bundle.js
+          done
+          echo "Direcciones Supabase en el sitio:"; grep -oE 'https://[a-z0-9]{20}\.supabase\.co' bundle.js | sort | uniq -c || echo "ninguna"
+          url=$(grep -oE 'https://[a-z0-9]{20}\.supabase\.co' bundle.js | head -1 || true)
+          key=$(grep -oE 'sb_publishable_[A-Za-z0-9_-]+|eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+' bundle.js | head -1 || true)
+          echo "Tipo de clave: ${key:0:15}..."
+          if [ -n "$url" ] && [ -n "$key" ]; then
+            echo "Configuración de Auth:"; curl -sS "$url/auth/v1/settings" -H "apikey: $key"; echo
+          fi

@@ -8,7 +8,8 @@ import {
   CONTRACT_STATUSES, MGMT_DOC_KINDS, MOVEMENT_KINDS, MOVEMENT_STATUSES, TICKET_PRIORITIES, TICKET_STATUSES, labelOf,
 } from "@/lib/admin/labels";
 import { isUuid, oneOf, str, type SP } from "@/lib/admin/params";
-import { labelFor, staffCtx, userLabels } from "@/lib/admin/server";
+import { getSetting, labelFor, staffCtx, userLabels } from "@/lib/admin/server";
+import { RentSection } from "@/components/admin/RentSection";
 import { currentPeriod, localDay } from "@/lib/admin/time";
 import { formatDate, formatMoney, type Currency } from "@/lib/format";
 import {
@@ -79,6 +80,8 @@ export default async function ContractDetail(props: PageProps<"/admin/administra
           <ContractFields today={localDay(new Date())} v={c} />
         </ActionForm>
       </details>
+
+      <RentSection supabase={supabase} contractId={id} feeDefault={Number((await getSetting(supabase, "rent.fee_percent")) ?? 5)} />
 
       <section className="card card-body stack" style={{ marginTop: 16 }}>
         <h2>Estados de cuenta por período y moneda</h2>

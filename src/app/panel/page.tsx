@@ -18,6 +18,8 @@ export default async function Page(props: PageProps<"/panel">) {
   const sp = await props.searchParams;
   const u = await requireUser("/panel");
   const supabase = await createClient();
+  // Vincula los alquileres registrados por MAJ con el correo confirmado de este usuario (inquilinos).
+  await supabase.rpc("link_my_leases");
   const nowIso = new Date().toISOString();
 
   const [openReq, pendingQuotes, notifications, visits, convs] = await Promise.all([

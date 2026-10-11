@@ -11,6 +11,7 @@ import {
 import { groupStatements, periodLabel, type StatementRow } from "@/lib/panel/statements";
 import { createClient } from "@/lib/supabase/server";
 import { TicketForm } from "./TicketForm";
+import { OwnerRents } from "@/components/panel/OwnerRents";
 
 export const metadata: Metadata = { title: "Propiedad administrada" };
 
@@ -73,6 +74,8 @@ export default async function Page(props: PageProps<"/panel/administracion/[id]"
         </div>
         {c.fee_terms ? <p className="small" style={{ whiteSpace: "pre-wrap", marginTop: 12 }}><strong>Honorarios:</strong> {c.fee_terms}</p> : null}
       </section>
+
+      <OwnerRents supabase={supabase} contractId={id} />
 
       <section className="card card-body" aria-labelledby="st-title">
         <h2 id="st-title" style={{ marginTop: 0 }}>Estado de cuenta por período</h2>

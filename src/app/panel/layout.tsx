@@ -3,6 +3,7 @@ import { PanelNav } from "@/components/panel/PanelNav";
 import { hasRole, isStaffRole, requireUser } from "@/lib/auth";
 import { hasSupabase } from "@/lib/env";
 import { getSellerContext } from "@/lib/listing-editor/server";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Mi cuenta", robots: { index: false, follow: false } };
 
@@ -34,6 +35,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   }
   if (hasRole(u, "agencia") || memberships.length > 0) items.push({ href: "/panel/organizacion", label: "Mi agencia" });
   if (hasRole(u, "propietario")) items.push({ href: "/panel/administracion", label: "Mis propiedades administradas" });
+  const { count: tenantLeases } = await (await createClient()).from("rental_leases").select("id", { count: "exact", head: true }).eq("tenant_user_id", u.id);
+  if (tenantLeases) items.push({ href: "/panel/rentas", label: "Mis rentas" });
   items.push({ href: "/panel/perfil", label: "Perfil" }, { href: "/cuenta/seguridad", label: "Seguridad" });
   if (isStaffRole(u)) items.push({ href: "/admin", label: "Panel MAJ" });
   return (

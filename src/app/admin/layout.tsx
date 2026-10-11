@@ -23,6 +23,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: "/admin/mensajes", label: "Conversaciones" },
     { href: "/admin/cotizaciones", label: "Cotizaciones" },
     { href: "/admin/administracion", label: "Administración de propiedades" },
+    { href: "/admin/rentas", label: "Cobro de rentas" },
     { href: "/admin/licencias", label: "Licencias y pagos" },
     { href: "/admin/publicadores", label: "Solicitudes de publicador" },
     { href: "/admin/usuarios", label: "Usuarios y agencias" },

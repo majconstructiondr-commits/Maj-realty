@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { RentCollectionForm } from "./RentCollectionForm";
 import "@/components/listing-editor/editor.css";
 import { requireUser } from "@/lib/auth";
 import { CHANNELS, OPERATIONS, PROPERTY_TYPES, REQUEST_KINDS, REQUEST_STATUSES, STATUSES, type ListingStatus } from "@/lib/catalog/definitions";
@@ -61,6 +62,16 @@ export default async function PublicationsPage(props: PageProps<"/panel/publicac
       .limit(50),
     supabase.from("licenses").select("id, code, status, ends_at").eq("status", "activa").gt("ends_at", new Date().toISOString()).limit(5),
   ]);
+  const rentIds = rows.filter((r) => r.owner_user_id === me && r.operation !== "venta").map((r) => r.id);
+  const [{ data: rentContracts }, { data: feeSetting }] = await Promise.all([
+    rentIds.length
+      ? supabase.from("management_contracts").select("property_id, status").in("property_id", rentIds).contains("services", ["cobro_rentas"]).in("status", ["borrador", "activo"])
+      : Promise.resolve({ data: [] as { property_id: string; status: string }[] }),
+    supabase.from("site_settings").select("value").eq("key", "rent.fee_percent").maybeSingle(),
+  ]);
+  const rentStatus = new Map(((rentContracts ?? []) as { property_id: string; status: string }[]).map((c) => [c.property_id, c.status]));
+  const feePercent = Number(feeSetting?.value ?? 5);
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santo_Domingo" }).format(new Date());
   const stats = new Map(((statsRes.data ?? []) as Stats[]).map((s) => [s.property_id, s]));
   const pending = new Set(((pendingRes.data ?? []) as { property_id: string }[]).map((x) => x.property_id));
   const leads = (leadsRes.data ?? []) as Lead[];
@@ -153,6 +164,18 @@ export default async function PublicationsPage(props: PageProps<"/panel/publicac
                 canDuplicate={canCreate}
                 canDelete={r.owner_user_id === me && r.status === "borrador" && !r.first_published_at}
               />
+              {rentIds.includes(r.id) ? (
+                rentStatus.has(r.id) ? (
+                  <p className="small" style={{ margin: 0 }}>
+                    <strong>Cobro de renta por MAJ:</strong> {rentStatus.get(r.id) === "activo" ? <>activo · <Link href="/panel/administracion">ver cobros</Link></> : "solicitud en revisión por MAJ"}
+                  </p>
+                ) : (
+                  <details>
+                    <summary className="small"><strong>Cobro de renta por MAJ ({feePercent}%)</strong></summary>
+                    <RentCollectionForm propertyId={r.id} feePercent={feePercent} today={today} />
+                  </details>
+                )
+              ) : null}
             </li>
           );
         })}

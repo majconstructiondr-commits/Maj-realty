@@ -23,6 +23,7 @@ export function Footer({ s }: { s: SiteSettings }) {
               <li><Link href="/busco-propiedad">Busco una propiedad</Link></li>
               <li><Link href="/publica-tu-propiedad">Publica tu propiedad</Link></li>
               <li><Link href="/calculadora-hipotecaria">Calculadora hipotecaria</Link></li>
+              <li><Link href="/app">Descarga la app</Link></li>
             </ul>
           </div>
           <div>

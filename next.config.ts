@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
+      // El service worker siempre se revisa al abrir la app
+      { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }, { key: "Content-Type", value: "application/javascript; charset=utf-8" }] },
       // Paneles y cuentas fuera de los buscadores
       { source: "/(panel|admin|cuenta)/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
     ];

@@ -5,7 +5,7 @@ import { LEGAL_DOCS } from "@/lib/legal/drafts";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = env.siteUrl;
-  const pages = ["", "/venta", "/renta", "/administracion", "/remodelaciones", "/cotizaciones", "/gestiones-legales", "/publica-tu-propiedad", "/nosotros", "/contacto", "/busco-propiedad", "/calculadora-hipotecaria", "/legal"];
+  const pages = ["", "/venta", "/renta", "/administracion", "/remodelaciones", "/cotizaciones", "/gestiones-legales", "/publica-tu-propiedad", "/nosotros", "/contacto", "/busco-propiedad", "/calculadora-hipotecaria", "/app", "/legal"];
   const listings = await publicCodesForSitemap();
   return [
     ...pages.map((p) => ({ url: `${base}${p}`, changeFrequency: "weekly" as const })),

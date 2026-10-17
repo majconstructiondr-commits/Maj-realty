@@ -1,6 +1,6 @@
 "use client";
 // Paso 6: fotos y planos (comprimidos a WebP en el navegador, sin EXIF), video y recorrido por enlace https.
-import { startTransition, useActionState, useRef, useState, useTransition } from "react";
+import { startTransition, useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   addExternalMedia, addPhoto, deleteMedia, discardUpload, moveMedia, setCover, type SimpleResult,
@@ -106,10 +106,29 @@ export function MediaManager({ propertyId, media, live }: { propertyId: string; 
 function UploadForm({ propertyId, onDone }: { propertyId: string; onDone: (r: SimpleResult) => void }) {
   const [files, setFiles] = useState<File[]>([]);
   const [alts, setAlts] = useState<string[]>([]);
+  // Vista previa local (object URL) de cada imagen elegida, para identificarla al escribir su descripción.
+  const [previews, setPreviews] = useState<string[]>([]);
+  const previewsRef = useRef<string[]>([]);
   const [kind, setKind] = useState<"foto" | "plano">("foto");
   const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  function showPreviews(next: string[]) {
+    previewsRef.current.forEach((u) => URL.revokeObjectURL(u));
+    previewsRef.current = next;
+    setPreviews(next);
+  }
+  useEffect(() => () => previewsRef.current.forEach((u) => URL.revokeObjectURL(u)), []);
+
+  function remove(i: number) {
+    URL.revokeObjectURL(previews[i]);
+    previewsRef.current = previews.filter((_, j) => j !== i);
+    setPreviews(previewsRef.current);
+    setFiles((f) => f.filter((_, j) => j !== i));
+    setAlts((a) => a.filter((_, j) => j !== i));
+    if (files.length === 1 && inputRef.current) inputRef.current.value = "";
+  }
 
   function pick(list: FileList | null) {
     setError(null);
@@ -121,6 +140,7 @@ function UploadForm({ propertyId, onDone }: { propertyId: string; onDone: (r: Si
     const ok = arr.filter((f) => IMAGE_TYPES.includes(f.type) && f.size <= MAX_IMAGE_BYTES * 3).slice(0, 20);
     setFiles(ok);
     setAlts(ok.map(() => ""));
+    showPreviews(ok.map((f) => URL.createObjectURL(f)));
   }
 
   async function upload() {
@@ -155,6 +175,7 @@ function UploadForm({ propertyId, onDone }: { propertyId: string; onDone: (r: Si
     setProgress(null);
     setFiles([]);
     setAlts([]);
+    showPreviews([]);
     if (inputRef.current) inputRef.current.value = "";
     onDone(
       failed.length
@@ -183,13 +204,24 @@ function UploadForm({ propertyId, onDone }: { propertyId: string; onDone: (r: Si
       </div>
       {files.length ? (
         <div className="form" style={{ marginTop: 12 }}>
-          {files.map((f, i) => (
-            <div key={`${f.name}-${i}`} className="field">
-              <label htmlFor={`alt-${i}`} className="required">Descripción de “{f.name}”</label>
-              <input id={`alt-${i}`} className="input" maxLength={200} value={alts[i] ?? ""} placeholder="Ej.: Sala con ventanal y vista al jardín"
-                onChange={(e) => { const v = e.currentTarget.value; setAlts((a) => a.map((x, j) => (j === i ? v : x))); }} />
-            </div>
-          ))}
+          <ol className="le-media-list">
+            {files.map((f, i) => (
+              <li key={`${f.name}-${i}`} className="card le-media-item le-media-item--pick">
+                <div className="le-thumb">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {previews[i] ? <img src={previews[i]} alt={`Vista previa de la imagen ${i + 1}`} /> : null}
+                </div>
+                <div className="le-media-body field">
+                  <label htmlFor={`alt-${i}`} className="required">Descripción de la imagen {i + 1}</label>
+                  <input id={`alt-${i}`} className="input" maxLength={200} value={alts[i] ?? ""} placeholder="Ej.: Sala con ventanal y vista al jardín"
+                    onChange={(e) => { const v = e.currentTarget.value; setAlts((a) => a.map((x, j) => (j === i ? v : x))); }} />
+                  <div>
+                    <button type="button" className="btn btn-ghost btn-sm" disabled={Boolean(progress)} onClick={() => remove(i)}>Quitar</button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ol>
           <div>
             <button type="button" className="btn btn-primary" disabled={Boolean(progress)} aria-busy={Boolean(progress)} onClick={upload}>
               {progress ? "Subiendo…" : `Subir ${files.length} imagen(es)`}

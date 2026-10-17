@@ -16,6 +16,9 @@
 .le-thumb { aspect-ratio: 4 / 3; background: var(--silver-100); border-radius: var(--radius-sm); overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .le-thumb img { width: 100%; height: 100%; object-fit: cover; }
 .le-media-body { min-width: 0; }
+/* Imágenes elegidas antes de subir: miniatura al lado de la descripción también en teléfono. */
+.le-media-item--pick { grid-template-columns: 110px minmax(0, 1fr); }
+@media (min-width: 640px) { .le-media-item--pick { grid-template-columns: 160px minmax(0, 1fr); } }
 .le-link-list { list-style: none; padding: 0; margin: 0 0 8px; display: grid; gap: 8px; }
 .le-preview { container-type: inline-size; display: grid; gap: 14px; min-width: 0; }
 .le-preview h2 { font-size: 1.5rem; }

@@ -318,10 +318,11 @@ table.table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 /* Paneles */
 .panel-layout { display: grid; gap: 20px; grid-template-columns: 1fr; padding-top: 24px; }
 @media (min-width: 960px) { .panel-layout { grid-template-columns: 240px minmax(0, 1fr); } }
-.panel-nav { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; }
+/* En teléfono las opciones bajan en filas: una franja que se desliza de lado escondía "Mis publicaciones" y "Panel MAJ". */
+.panel-nav { display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 6px; }
 .panel-nav a { white-space: nowrap; text-decoration: none; padding: 9px 12px; border-radius: 8px; color: var(--navy-700); font-size: 0.92rem; border: 1px solid var(--border); background: #fff; }
 .panel-nav a[aria-current="page"] { background: var(--navy-800); color: #fff; border-color: var(--navy-800); }
-@media (min-width: 960px) { .panel-nav { flex-direction: column; overflow: visible; } .panel-nav a { border: 0; background: transparent; } }
+@media (min-width: 960px) { .panel-nav { flex-direction: column; flex-wrap: nowrap; } .panel-nav a { border: 0; background: transparent; } }
 .stat { padding: 16px; }
 .stat .num { font-size: 1.7rem; font-weight: 800; color: var(--navy-800); }
 .stepper { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; list-style: none; margin: 0 0 16px; padding-left: 0; }

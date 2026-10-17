@@ -84,7 +84,7 @@ Propuesta: `majrealty.com.do`. Alternativas: `majrealty.do`, `majrealtysrl.com`.
 
 ## 6. WhatsApp
 
-Los números se editan en *Panel MAJ → Configuración* (`whatsapp.primary`, `whatsapp.secondary`, `whatsapp.routing`, `whatsapp.template`). Los botones usan enlaces `https://wa.me/<número>?text=…`. **No hay integración con la API de WhatsApp**: no se reciben ni sincronizan mensajes externos. Integrarla requiere una cuenta de WhatsApp Business Platform, un proveedor y el consentimiento aplicable.
+Los números se editan en *Panel MAJ → Configuración* (`whatsapp.primary`, `whatsapp.secondary` (vacío = no se muestra), `whatsapp.routing`, `whatsapp.template`). Los botones usan enlaces `https://wa.me/<número>?text=…`. **No hay integración con la API de WhatsApp**: no se reciben ni sincronizan mensajes externos. Integrarla requiere una cuenta de WhatsApp Business Platform, un proveedor y el consentimiento aplicable.
 
 ## 7. Copias de seguridad y restauración
 

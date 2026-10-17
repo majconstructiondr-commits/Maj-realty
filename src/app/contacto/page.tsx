@@ -19,8 +19,8 @@ export default async function Page() {
               {s["company.phones"].map((p) => (
                 <div key={p} className="box"><span className="box-label">Teléfono</span><a className="box-value" href={`tel:+1${p.replace(/\D/g, "")}`}>{p}</a></div>
               ))}
-              <div className="box"><span className="box-label">WhatsApp principal</span><a className="box-value" href={whatsappLink(s["whatsapp.primary"])} target="_blank" rel="noopener noreferrer">Abrir chat</a></div>
-              <div className="box"><span className="box-label">WhatsApp alternativo</span><a className="box-value" href={whatsappLink(s["whatsapp.secondary"])} target="_blank" rel="noopener noreferrer">Abrir chat</a></div>
+              <div className="box"><span className="box-label">WhatsApp</span><a className="box-value" href={whatsappLink(s["whatsapp.primary"])} target="_blank" rel="noopener noreferrer">Abrir chat</a></div>
+              {s["whatsapp.secondary"] ? <div className="box"><span className="box-label">WhatsApp alternativo</span><a className="box-value" href={whatsappLink(s["whatsapp.secondary"])} target="_blank" rel="noopener noreferrer">Abrir chat</a></div> : null}
               {s["company.email"] ? <div className="box"><span className="box-label">Correo</span><a className="box-value" href={`mailto:${s["company.email"]}`}>{s["company.email"]}</a></div> : null}
               {s["company.address"] ? <div className="box"><span className="box-label">Dirección</span><span className="box-value">{s["company.address"]}</span></div> : null}
               {s["company.hours"] ? <div className="box"><span className="box-label">Horario</span><span className="box-value">{s["company.hours"]}</span></div> : null}

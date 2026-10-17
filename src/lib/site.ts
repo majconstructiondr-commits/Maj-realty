@@ -6,14 +6,14 @@ import { createClient } from "./supabase/server";
 // Lo marcado como null está POR CONFIRMAR y no se muestra como dato activo.
 export const defaultSettings = {
   "company.name": "MAJ REALTY SRL",
-  "company.phones": ["849-802-8181", "809-770-6277", "849-272-5000"],
+  "company.phones": ["849-802-8181"],
   "company.primary_phone": "849-802-8181",
   "company.email": null as string | null,
   "company.address": null as string | null,
   "company.rnc": "131090443" as string | null,
   "company.hours": null as string | null,
-  "whatsapp.primary": "18097706277",
-  "whatsapp.secondary": "18492725000",
+  "whatsapp.primary": "18498028181",
+  "whatsapp.secondary": null as string | null,
   "whatsapp.routing": "equipo" as "equipo" | "asesor",
   "whatsapp.template": "Hola, me interesa {servicio}, referencia {codigo}, enlace {url}",
   "appointments.duration_minutes": 60,

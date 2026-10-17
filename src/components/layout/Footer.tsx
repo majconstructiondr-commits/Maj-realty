@@ -42,8 +42,8 @@ export function Footer({ s }: { s: SiteSettings }) {
               {s["company.phones"].map((p) => (
                 <li key={p}><a href={`tel:+1${p.replace(/\D/g, "")}`}>Tel. {p}</a></li>
               ))}
-              <li><a href={whatsappLink(s["whatsapp.primary"])} target="_blank" rel="noopener noreferrer">WhatsApp principal</a></li>
-              <li><a href={whatsappLink(s["whatsapp.secondary"])} target="_blank" rel="noopener noreferrer">WhatsApp alternativo</a></li>
+              <li><a href={whatsappLink(s["whatsapp.primary"])} target="_blank" rel="noopener noreferrer">WhatsApp</a></li>
+              {s["whatsapp.secondary"] ? <li><a href={whatsappLink(s["whatsapp.secondary"])} target="_blank" rel="noopener noreferrer">WhatsApp alternativo</a></li> : null}
               {s["company.email"] ? <li><a href={`mailto:${s["company.email"]}`}>{s["company.email"]}</a></li> : null}
               {s["company.address"] ? <li>{s["company.address"]}</li> : null}
               {s["company.hours"] ? <li>{s["company.hours"]}</li> : null}

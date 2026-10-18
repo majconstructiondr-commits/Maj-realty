@@ -159,7 +159,7 @@ function StepContent({ step, data, view, live, readOnly }: {
     case 7:
       return (
         <div className="form">
-          <StepPrivate propertyId={id} live={live} priv={view.priv} />
+          <StepPrivate propertyId={id} live={live} priv={view.priv} propertyType={view.property.property_type} />
           <DocumentManager propertyId={id} documents={data.documents} live={live} />
         </div>
       );

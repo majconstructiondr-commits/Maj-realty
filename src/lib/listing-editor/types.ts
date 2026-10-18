@@ -17,6 +17,7 @@ export type EditorProperty = {
   owner_user_id: string;
   organization_id: string | null;
   license_id: string | null;
+  is_maj_listing: boolean;
   province: string;
   municipality: string;
   sector: string;

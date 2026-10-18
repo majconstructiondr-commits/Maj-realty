@@ -214,9 +214,11 @@ async function PreviewStep({ data, view, readOnly }: { data: EditorData; view: {
             );
           })}
           <li>
-            <span className={license ? "le-ok" : "le-miss"} aria-hidden="true">{license ? "✓" : "✗"}</span>
+            <span className={license || prop.is_maj_listing ? "le-ok" : "le-miss"} aria-hidden="true">{license || prop.is_maj_listing ? "✓" : "✗"}</span>
             <span>
-              {license ? (
+              {prop.is_maj_listing ? (
+                <>Publicación de MAJ: no necesita licencia</>
+              ) : license ? (
                 <>Licencia activa {license.code} (vence el {formatDate(license.ends_at)})</>
               ) : (
                 <>Licencia de publicación activa — <Link href="/panel/licencia">ver licencia</Link></>

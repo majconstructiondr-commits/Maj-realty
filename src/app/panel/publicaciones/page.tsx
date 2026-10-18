@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { RentCollectionForm } from "./RentCollectionForm";
 import "@/components/listing-editor/editor.css";
-import { requireUser } from "@/lib/auth";
+import { isStaffRole, requireUser } from "@/lib/auth";
 import { CHANNELS, OPERATIONS, PROPERTY_TYPES, REQUEST_KINDS, REQUEST_STATUSES, STATUSES, type ListingStatus } from "@/lib/catalog/definitions";
 import { formatDate, formatNumber } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
@@ -95,6 +95,10 @@ export default async function PublicationsPage(props: PageProps<"/panel/publicac
         <div className="alert alert-info" style={{ marginTop: 12 }}>
           Su cuenta aún no está habilitada para publicar. <Link href="/panel/publicar">Solicite su licencia de publicación</Link>.
         </div>
+      ) : isStaffRole(ctx.user) ? (
+        <p className="small muted" style={{ marginTop: 8 }}>
+          Como personal de MAJ, lo que publique a su nombre es publicación de MAJ y no necesita licencia.
+        </p>
       ) : !activeLicenses.length ? (
         <p className="alert alert-warning small" style={{ marginTop: 12 }}>
           No tiene una licencia de publicación activa: puede preparar borradores, pero para enviarlos a revisión necesita una. <Link href="/panel/licencia">Ver licencia</Link>

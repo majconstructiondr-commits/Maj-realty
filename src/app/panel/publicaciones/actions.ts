@@ -8,9 +8,15 @@ import { hasSupabase } from "@/lib/env";
 import { dbErrorMessage } from "@/lib/security";
 import { createClient } from "@/lib/supabase/server";
 import { formToObject } from "@/lib/validation/requests";
+import { isStaffRole } from "@/lib/auth";
 import { newDraftSchema, zodFieldErrors } from "@/lib/listing-editor/schemas";
-import { canCreateListings, getSellerContext, memberCan } from "@/lib/listing-editor/server";
+import { canCreateListings, getSellerContext, memberCan, type SellerContext } from "@/lib/listing-editor/server";
 import { DUPLICATE_COLUMNS, QUICK_ACTIONS, duplicateTitle, type QuickAction } from "@/lib/listing-editor/transitions";
+
+// Lo que publica el personal de MAJ a su nombre es publicación de MAJ: no consume licencia.
+// La base solo acepta la marca con sesión de dos pasos (is_staff exige aal2).
+const isMajListing = (ctx: SellerContext, orgId: unknown) =>
+  !orgId && isStaffRole(ctx.user) && ctx.user.aal === "aal2";
 
 export async function createDraft(_prev: ActionState, fd: FormData): Promise<ActionState> {
   if (!hasSupabase) return { status: "error", message: "Modo demostración: la base de datos no está configurada." };
@@ -25,7 +31,7 @@ export async function createDraft(_prev: ActionState, fd: FormData): Promise<Act
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("properties")
-    .insert({ ...r.data, owner_user_id: ctx.user.id })
+    .insert({ ...r.data, owner_user_id: ctx.user.id, is_maj_listing: isMajListing(ctx, r.data.organization_id) })
     .select("id")
     .single();
   if (error || !data) return { status: "error", message: dbErrorMessage(error) };
@@ -58,7 +64,7 @@ export async function quickAction(_prev: ActionState, fd: FormData): Promise<Act
     }
     const { data: created, error } = await supabase
       .from("properties")
-      .insert({ ...copy, title: duplicateTitle(prop.title), owner_user_id: ctx.user.id })
+      .insert({ ...copy, title: duplicateTitle(prop.title), owner_user_id: ctx.user.id, is_maj_listing: isMajListing(ctx, copy.organization_id) })
       .select("id")
       .single();
     if (error || !created) return { status: "error", message: dbErrorMessage(error) };

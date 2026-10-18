@@ -171,7 +171,9 @@ describe("paso 7: datos privados", () => {
     expect(privateSchema.safeParse({ publication_authorized: "on" }).success).toBe(false);
     expect(privateSchema.safeParse({ publication_authorized: "on", authorization_date: "2026-10-01", authorization_expires: "2026-09-01" }).success).toBe(false);
     const ok = privateSchema.parse({ publication_authorized: "on", authorization_date: "2026-10-01", exclusivity: "si", owner_email: "", survey_status: "deslindado" });
-    expect(ok).toMatchObject({ publication_authorized: true, exclusivity: true, owner_email: null, survey_status: "deslindado" });
+    expect(ok).toMatchObject({ publication_authorized: true, exclusivity: true, owner_email: null });
+    // Los datos del título ya no se piden: no se guardan ni se borran los que ya estaban.
+    expect(ok).not.toHaveProperty("survey_status");
   });
   it("exclusividad sin indicar es null y no admite vencimiento", () => {
     expect(privateSchema.parse({}).exclusivity).toBeNull();

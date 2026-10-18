@@ -398,11 +398,8 @@ export const privateSchema = z
     commission_terms: optText(1000, "Las condiciones de comisión"),
     exclusivity: z.preprocess((v) => (v === "si" ? true : v === "no" ? false : null), z.boolean().nullable()),
     exclusivity_expires: optDate,
-    title_type: optText(120, "El tipo de título"),
-    title_registry_number: optText(120, "La matrícula"),
-    cadastral_designation: optText(160, "La designación catastral"),
-    survey_status: optEnum(keys(SURVEY_STATUSES)),
-    legal_status_certificate_date: optDate,
+    // Los datos del título (tipo, matrícula, designación catastral, deslinde, certificación) ya no se piden
+    // al publicar (indicado por MAJ, 2026-10-18); las columnas siguen en la base sin tocarse.
     declared_liens: optText(2000, "Las cargas declaradas"),
     tax_notes: optText(2000, "Las notas de impuestos"),
     contract_notes: optText(2000, "Las notas de contrato"),

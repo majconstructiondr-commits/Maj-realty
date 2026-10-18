@@ -5,10 +5,12 @@ export type Currency = "DOP" | "USD";
 const currencyPrefix: Record<Currency, string> = { DOP: "RD$", USD: "US$" };
 
 /** Importe en su moneda original. Nunca se mezclan monedas. */
-export function formatMoney(amount: number | string | null | undefined, currency: Currency, opts?: { decimals?: boolean }) {
-  if (amount === null || amount === undefined || amount === "") return "Precio a consultar";
+/** `onRequest`: texto cuando no hay importe (por defecto en español; las páginas públicas pasan el del idioma activo). */
+export function formatMoney(amount: number | string | null | undefined, currency: Currency, opts?: { decimals?: boolean; onRequest?: string }) {
+  const onRequest = opts?.onRequest ?? "Precio a consultar";
+  if (amount === null || amount === undefined || amount === "") return onRequest;
   const n = typeof amount === "string" ? Number(amount) : amount;
-  if (!Number.isFinite(n)) return "Precio a consultar";
+  if (!Number.isFinite(n)) return onRequest;
   const decimals = opts?.decimals ?? !Number.isInteger(n);
   const s = new Intl.NumberFormat("es-DO", {
     minimumFractionDigits: decimals ? 2 : 0,

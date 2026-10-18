@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 import "leaflet/dist/leaflet.css";
 
 /** Zona aproximada (~1 km). No muestra ni deduce la dirección exacta. */
-export function ApproxMap({ lat, lng }: { lat: number; lng: number }) {
+export function ApproxMap({ lat, lng, label = "Mapa de la zona aproximada" }: { lat: number; lng: number; label?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     let map: import("leaflet").Map | undefined;
@@ -23,5 +23,5 @@ export function ApproxMap({ lat, lng }: { lat: number; lng: number }) {
       map?.remove();
     };
   }, [lat, lng]);
-  return <div ref={ref} className="map-frame" role="region" aria-label="Mapa de la zona aproximada" />;
+  return <div ref={ref} className="map-frame" role="region" aria-label={label} />;
 }

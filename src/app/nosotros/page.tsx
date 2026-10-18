@@ -4,26 +4,31 @@ import { ContactButtons } from "@/components/ui/ContactButtons";
 import { getSiteSettings } from "@/lib/site";
 import { getTeam } from "@/lib/team";
 import { getContentBlock } from "@/lib/content";
+import { getI18n } from "@/i18n/server";
 
-export const metadata: Metadata = { title: "Nosotros", description: "Conoce a MAJ REALTY SRL, empresa inmobiliaria en República Dominicana.", alternates: { canonical: "/nosotros" } };
+export async function generateMetadata(): Promise<Metadata> {
+  const { d } = await getI18n();
+  return { ...d.about.meta, alternates: { canonical: "/nosotros" } };
+}
 
 export default async function Page() {
-  const [s, team, block] = await Promise.all([getSiteSettings(), getTeam(), getContentBlock("nosotros")]);
+  const [s, team, block, { d }] = await Promise.all([getSiteSettings(), getTeam(), getContentBlock("nosotros"), getI18n()]);
+  const t = d.about;
   return (
     <>
-      <PageHero eyebrow="Nosotros" title={block?.title ?? "MAJ REALTY SRL"} lead="Servicios inmobiliarios en República Dominicana: venta, renta, administración, remodelaciones y gestiones de propiedades." />
+      <PageHero eyebrow={t.eyebrow} title={block?.title ?? "MAJ REALTY SRL"} lead={t.lead} />
       <div className="container section" style={{ maxWidth: 900 }}>
         {block?.body ? (
           <div style={{ whiteSpace: "pre-line" }}>{block.body}</div>
         ) : (
           <div className="stack">
-            <p className="lead">Trabajamos con procesos claros: cada solicitud queda registrada con número y seguimiento, los documentos se manejan de forma privada y las publicaciones se revisan antes de mostrarse.</p>
-            <p className="muted small">La historia de la empresa, la misión y los datos del equipo se publicarán aquí cuando MAJ los confirme.</p>
+            <p className="lead">{t.body}</p>
+            <p className="muted small">{t.pending}</p>
           </div>
         )}
         {team.length ? (
           <>
-            <h2 style={{ marginTop: 32 }}>Equipo</h2>
+            <h2 style={{ marginTop: 32 }}>{t.team}</h2>
             <div className="grid-3">
               {team.map((m) => (
                 <div key={m.id} className="card card-body center">
@@ -39,7 +44,7 @@ export default async function Page() {
             </div>
           </>
         ) : null}
-        <div style={{ marginTop: 32 }}><ContactButtons s={s} servicio="sus servicios" /></div>
+        <div style={{ marginTop: 32 }}><ContactButtons s={s} d={d} servicio="sus servicios" /></div>
       </div>
     </>
   );

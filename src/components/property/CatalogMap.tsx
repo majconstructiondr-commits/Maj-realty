@@ -2,11 +2,13 @@
 import { useEffect, useRef } from "react";
 import "leaflet/dist/leaflet.css";
 import type { CatalogListing } from "@/lib/catalog/types";
-import { listingHref } from "./ListingCard";
+import { listingHref } from "./href";
+import { fmt, useI18n } from "@/i18n/client";
 
 /** Mapa con zonas APROXIMADAS (círculos de ~1 km). Nunca muestra la dirección exacta. */
 export function CatalogMap({ items, back }: { items: CatalogListing[]; back: string }) {
   const ref = useRef<HTMLDivElement>(null);
+  const { d } = useI18n();
   const withCoords = items.filter((i) => i.approx_lat && i.approx_lng);
   useEffect(() => {
     let map: import("leaflet").Map | undefined;
@@ -39,10 +41,10 @@ export function CatalogMap({ items, back }: { items: CatalogListing[]; back: str
   }, [withCoords, back]);
   return (
     <div className="stack">
-      <div ref={ref} className="map-frame" role="region" aria-label="Mapa de ubicaciones aproximadas" />
+      <div ref={ref} className="map-frame" role="region" aria-label={d.map.catalogAria} />
       <p className="xs muted">
-        Las zonas son aproximadas. La dirección exacta se comparte solo con autorización del propietario. {items.length - withCoords.length > 0
-          ? `${items.length - withCoords.length} inmueble(s) sin ubicación en el mapa.`
+        {d.map.approxNote} {items.length - withCoords.length > 0
+          ? fmt(d.map.withoutLocation, { n: items.length - withCoords.length })
           : ""}
       </p>
       <ul className="small">

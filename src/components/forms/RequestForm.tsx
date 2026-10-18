@@ -6,8 +6,8 @@ import { env, hasSupabase } from "@/lib/env";
 import { createClient } from "@/lib/supabase/client";
 import { compressImage, DOC_TYPES, IMAGE_TYPES, MAX_DOC_BYTES, safeFileName } from "@/lib/upload";
 import { formatDate } from "@/lib/format";
-import { CHANNELS } from "@/lib/catalog/definitions";
 import { Turnstile } from "./Turnstile";
+import { fmt, useI18n } from "@/i18n/client";
 
 type Props = {
   kind: string;
@@ -36,6 +36,8 @@ export function RequestForm(p: Props) {
   const [uploading, setUploading] = useState(false);
   const [started, setStarted] = useState(0);
   const handled = useRef<string | null>(null);
+  const { d } = useI18n();
+  const t = d.form;
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- marca de tiempo solo en el cliente
     setStarted(Date.now());
@@ -81,23 +83,23 @@ export function RequestForm(p: Props) {
   if (state.status === "ok") {
     return (
       <div className="alert alert-success" role="status" aria-live="polite">
-        <h3 style={{ marginTop: 0 }}>Solicitud registrada</h3>
+        <h3 style={{ marginTop: 0 }}>{t.registered}</h3>
         <p>
-          Número de seguimiento: <strong>{state.number}</strong>
+          {t.trackingNumber} <strong>{state.number}</strong>
           <br />
-          Fecha: {formatDate(state.createdAt, true)}
+          {t.date} {formatDate(state.createdAt, true)}
         </p>
-        {uploading ? <p>Adjuntando archivos…</p> : null}
+        {uploading ? <p>{t.attaching}</p> : null}
         {uploadReport ? (
           uploadReport.failed.length ? (
             <p className="alert alert-warning">
-              Se adjuntaron {uploadReport.ok} archivo(s). No se pudieron adjuntar: {uploadReport.failed.join(", ")}. Puede enviarlos por WhatsApp indicando su número de solicitud.
+              {fmt(t.attachPartial, { ok: uploadReport.ok, failed: uploadReport.failed.join(", ") })}
             </p>
           ) : (
-            <p>Archivos adjuntados: {uploadReport.ok}.</p>
+            <p>{fmt(t.attached, { n: uploadReport.ok })}</p>
           )
         ) : null}
-        <p className="small">Un asesor revisará su solicitud. Si creó una cuenta con este correo, puede seguirla en <Link href="/panel/solicitudes">Mi cuenta</Link>.</p>
+        <p className="small">{t.followUpBefore} <Link href="/panel/solicitudes">{t.followUpLink}</Link>.</p>
       </div>
     );
   }
@@ -117,43 +119,43 @@ export function RequestForm(p: Props) {
       {p.propertyRef ? <input type="hidden" name="property_ref" value={p.propertyRef} /> : null}
       <div className="honeypot" aria-hidden="true">
         <label>
-          No llenar este campo <input type="text" name="website" tabIndex={-1} autoComplete="off" />
+          {t.honeypot} <input type="text" name="website" tabIndex={-1} autoComplete="off" />
         </label>
       </div>
 
       {p.children}
 
       <fieldset className="fieldset">
-        <legend>Sus datos de contacto</legend>
+        <legend>{t.contactLegend}</legend>
         <div className="form-grid">
           <div className="field span-2">
-            <label htmlFor={`${p.kind}-name`} className="required">Nombre completo</label>
+            <label htmlFor={`${p.kind}-name`} className="required">{t.name}</label>
             <input id={`${p.kind}-name`} name="contact_name" className="input" required minLength={2} maxLength={160} autoComplete="name" defaultValue={p.defaultName} {...err("contact_name")} />
             <FieldError errors={errors} name="contact_name" />
           </div>
           <div className="field">
-            <label htmlFor={`${p.kind}-phone`}>Teléfono / WhatsApp</label>
+            <label htmlFor={`${p.kind}-phone`}>{t.phone}</label>
             <input id={`${p.kind}-phone`} name="contact_phone" className="input" inputMode="tel" autoComplete="tel" maxLength={25} placeholder="809-000-0000" {...err("contact_phone")} />
             <FieldError errors={errors} name="contact_phone" />
           </div>
           <div className="field">
-            <label htmlFor={`${p.kind}-email`}>Correo electrónico</label>
+            <label htmlFor={`${p.kind}-email`}>{t.email}</label>
             <input id={`${p.kind}-email`} name="contact_email" type="email" className="input" autoComplete="email" maxLength={160} defaultValue={p.defaultEmail} {...err("contact_email")} />
             <FieldError errors={errors} name="contact_email" />
           </div>
           <div className="field span-2">
-            <span className="hint">Indique al menos un teléfono o un correo.</span>
+            <span className="hint">{t.phoneOrEmail}</span>
           </div>
           <div className="field">
-            <label htmlFor={`${p.kind}-channel`}>Canal preferido</label>
+            <label htmlFor={`${p.kind}-channel`}>{t.channel}</label>
             <select id={`${p.kind}-channel`} name="preferred_channel" className="select" defaultValue="whatsapp">
-              {Object.entries(CHANNELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              {Object.entries(d.labels.channels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </div>
         </div>
         {!p.compact || p.messageLabel ? (
           <div className="field" style={{ marginTop: 14 }}>
-            <label htmlFor={`${p.kind}-msg`} className={p.messageRequired ? "required" : undefined}>{p.messageLabel ?? "Mensaje"}</label>
+            <label htmlFor={`${p.kind}-msg`} className={p.messageRequired ? "required" : undefined}>{p.messageLabel ?? t.message}</label>
             <textarea id={`${p.kind}-msg`} name="message" className="textarea" maxLength={4000} required={p.messageRequired} {...err("message")} />
             <FieldError errors={errors} name="message" />
           </div>
@@ -164,7 +166,7 @@ export function RequestForm(p: Props) {
 
       {p.allowFiles ? (
         <div className="field">
-          <label htmlFor={`${p.kind}-files`}>{p.filesLabel ?? "Fotos o documentos (opcional)"}</label>
+          <label htmlFor={`${p.kind}-files`}>{p.filesLabel ?? t.filesDefault}</label>
           <input
             id={`${p.kind}-files`}
             type="file"
@@ -173,7 +175,7 @@ export function RequestForm(p: Props) {
             className="input"
             onChange={(e) => setFiles(Array.from(e.target.files ?? []).slice(0, 10))}
           />
-          <span className="hint">JPG, PNG, WebP o PDF. Hasta 10 archivos de 15 MB. Las fotos se comprimen y se les quitan los datos de ubicación. Los archivos son privados.</span>
+          <span className="hint">{t.filesHint}</span>
         </div>
       ) : null}
 
@@ -181,17 +183,17 @@ export function RequestForm(p: Props) {
         <label className="check">
           <input type="checkbox" name="contact_consent" required {...err("contact_consent")} />
           <span>
-            Autorizo a MAJ REALTY a contactarme para atender esta solicitud y a tratar mis datos según la <Link href="/legal/privacidad" target="_blank">política de privacidad</Link>.
+            {t.consentBefore} <Link href="/legal/privacidad" target="_blank">{t.consentLink}</Link>.
           </span>
         </label>
         <FieldError errors={errors} name="contact_consent" />
         <label className="check">
           <input type="checkbox" name="marketing_consent" />
-          <span>Deseo recibir información de nuevos inmuebles y servicios (opcional).</span>
+          <span>{t.marketing}</span>
         </label>
       </div>
 
-      {env.turnstileSiteKey ? <Turnstile siteKey={env.turnstileSiteKey} /> : null}
+      {env.turnstileSiteKey ? <Turnstile siteKey={env.turnstileSiteKey} lang={t.turnstileLang} /> : null}
 
       {state.status === "error" ? (
         <div className="alert alert-error" role="alert">
@@ -200,11 +202,11 @@ export function RequestForm(p: Props) {
         </div>
       ) : null}
       {!hasSupabase ? (
-        <p className="alert alert-warning small">Modo demostración: este formulario no guarda datos todavía.</p>
+        <p className="alert alert-warning small">{t.demo}</p>
       ) : null}
 
       <button className="btn btn-primary" type="submit" disabled={pending}>
-        {pending ? "Enviando…" : p.submitLabel ?? "Enviar solicitud"}
+        {pending ? d.common.sending : p.submitLabel ?? t.submit}
       </button>
     </form>
   );

@@ -1,13 +1,19 @@
 import type { Metadata } from "next";
 import { PageHero } from "@/components/layout/PageHero";
 import { MortgageCalculator } from "@/components/forms/MortgageCalculator";
+import { getI18n } from "@/i18n/server";
 
-export const metadata: Metadata = { title: "Calculadora hipotecaria", description: "Calcula una cuota mensual orientativa.", alternates: { canonical: "/calculadora-hipotecaria" } };
+export async function generateMetadata(): Promise<Metadata> {
+  const { d } = await getI18n();
+  return { ...d.mortgage.meta, alternates: { canonical: "/calculadora-hipotecaria" } };
+}
 
-export default function Page() {
+export default async function Page() {
+  const { d } = await getI18n();
+  const t = d.mortgage;
   return (
     <>
-      <PageHero eyebrow="Herramienta" title="Calculadora hipotecaria" lead="Estimación orientativa de la cuota mensual con los datos que introduzcas." />
+      <PageHero eyebrow={t.eyebrow} title={t.title} lead={t.lead} />
       <div className="container section" style={{ maxWidth: 860 }}>
         <MortgageCalculator />
       </div>

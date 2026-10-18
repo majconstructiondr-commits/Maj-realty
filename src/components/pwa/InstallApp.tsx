@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { useI18n } from "@/i18n/client";
 
 type InstallPrompt = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
 type Platform = "ios" | "android" | "otro";
@@ -12,9 +13,22 @@ function detectPlatform(): Platform {
 }
 const isStandalone = () => window.matchMedia("(display-mode: standalone)").matches;
 
+/** Pasos con partes en negrita: los elementos impares de cada paso van en <strong>. */
+function Steps({ steps }: { steps: string[][] }) {
+  return (
+    <ol className="stack">
+      {steps.map((parts, i) => (
+        <li key={i}>{parts.map((p, j) => (j % 2 ? <strong key={j}>{p}</strong> : p))}</li>
+      ))}
+    </ol>
+  );
+}
+
 /** Botón para instalar la app (Android y computadoras) e instrucciones para iPhone. */
 export function InstallApp() {
   const [prompt, setPrompt] = useState<InstallPrompt | null>(null);
+  const { d } = useI18n();
+  const t = d.app;
   const platform = useSyncExternalStore<Platform>(noop, detectPlatform, () => "otro");
   const standalone = useSyncExternalStore(noop, isStandalone, () => false);
   const [justInstalled, setInstalled] = useState(false);
@@ -34,7 +48,7 @@ export function InstallApp() {
     };
   }, []);
 
-  if (installed) return <p className="alert alert-success">La app ya está instalada en este dispositivo.</p>;
+  if (installed) return <p className="alert alert-success">{t.installed}</p>;
 
   return (
     <div className="stack">
@@ -49,21 +63,13 @@ export function InstallApp() {
             setPrompt(null);
           }}
         >
-          Instalar la app
+          {t.installButton}
         </button>
       ) : null}
       {platform === "ios" ? (
-        <ol className="stack">
-          <li>Abra esta página en <strong>Safari</strong>.</li>
-          <li>Toque el botón <strong>Compartir</strong> (el cuadrado con la flecha hacia arriba).</li>
-          <li>Elija <strong>Agregar a pantalla de inicio</strong> y toque <strong>Agregar</strong>.</li>
-        </ol>
+        <Steps steps={t.ios} />
       ) : !prompt ? (
-        <ol className="stack">
-          <li>Abra esta página en <strong>Chrome</strong>.</li>
-          <li>Toque el menú <strong>⋮</strong> arriba a la derecha.</li>
-          <li>Elija <strong>Instalar app</strong> o <strong>Agregar a la pantalla principal</strong>.</li>
-        </ol>
+        <Steps steps={t.android} />
       ) : null}
     </div>
   );

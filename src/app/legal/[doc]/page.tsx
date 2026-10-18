@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { LEGAL_DOCS } from "@/lib/legal/drafts";
 import { getContentBlock } from "@/lib/content";
 import { getSiteSettings } from "@/lib/site";
+import { getI18n } from "@/i18n/server";
 
 export function generateStaticParams() {
   return Object.keys(LEGAL_DOCS).map((doc) => ({ doc }));
@@ -19,9 +20,10 @@ export default async function Page(props: PageProps<"/legal/[doc]">) {
   const { doc } = await props.params;
   const d = LEGAL_DOCS[doc];
   if (!d) notFound();
-  const [override, s] = await Promise.all([getContentBlock(`legal.${doc}`), getSiteSettings()]);
+  const [override, s, { d: t }] = await Promise.all([getContentBlock(`legal.${doc}`), getSiteSettings(), getI18n()]);
   return (
-    <div className="container section" style={{ maxWidth: 860 }}>
+    <div className="container section" style={{ maxWidth: 860 }} lang="es-DO">
+      {t.legal.note ? <p className="alert alert-info small" lang={t.meta.htmlLang}>{t.legal.note}</p> : null}
       <nav className="small"><Link href="/legal">← Documentos legales</Link></nav>
       <h1>{override?.title ?? d.title}</h1>
       <p className="alert alert-warning small">

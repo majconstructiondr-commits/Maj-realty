@@ -2,6 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { headers } from "next/headers";
 import { serverEnv } from "./env";
+import { es } from "@/i18n/es";
 
 /** IP del cliente (detrás del proxy de la plataforma) para límites; se guarda solo como hash. */
 export async function clientIpHash() {
@@ -47,10 +48,11 @@ export async function checkHuman(fd: FormData) {
 
 /** Traduce errores de la base de datos a mensajes claros sin filtrar detalles internos. */
 export function dbErrorMessage(e: { message?: string; code?: string } | null | undefined) {
-  if (!e) return "Ocurrió un error inesperado.";
+  const m = es.dbErrors;
+  if (!e) return m.unexpected;
   if (e.code === "P0001" && e.message) return e.message;
-  if (e.code === "42501") return e.message && !/permission denied|row-level/i.test(e.message) ? e.message : "No tiene permiso para esta acción.";
-  if (e.code === "23505") return "Ya existe un registro con esos datos.";
-  if (e.code === "23514") return "Algún dato no cumple las reglas permitidas. Revise el formulario.";
-  return "No se pudo guardar. Intente de nuevo en unos minutos.";
+  if (e.code === "42501") return e.message && !/permission denied|row-level/i.test(e.message) ? e.message : m.forbidden;
+  if (e.code === "23505") return m.duplicate;
+  if (e.code === "23514") return m.rules;
+  return m.generic;
 }

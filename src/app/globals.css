@@ -192,6 +192,23 @@ input[type="date"].input, input[type="datetime-local"].input { -webkit-appearanc
 }
 .account-link { color: #fff; background: var(--navy-700); border: 1px solid var(--navy-700); border-radius: 8px; padding: 8px 12px; text-decoration: none; font-size: 0.88rem; font-weight: 600; white-space: nowrap; }
 .account-link:hover { background: var(--navy-600); color: #fff; }
+/* Selector de idioma ES | EN */
+.lang-switch { display: flex; align-items: center; flex-wrap: nowrap; }
+.lang-sep { color: var(--silver-400); padding: 0 1px; }
+.lang-btn { background: none; border: 0; border-radius: 6px; min-height: 42px; min-width: 34px; padding: 0 6px; font: inherit; font-size: 0.86rem; font-weight: 600; color: var(--navy-600); cursor: pointer; }
+.lang-btn:hover { background: var(--silver-100); }
+.lang-btn[aria-pressed="true"] { color: var(--navy-800); font-weight: 800; text-decoration: underline; text-decoration-color: var(--gold-500); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.lang-btn:disabled { opacity: 0.6; cursor: wait; }
+/* En escritorio el menú completo y el selector comparten la barra: márgenes más ajustados */
+@media (min-width: 1280px) {
+  .site-header .nav-desktop a { padding: 8px 5px; }
+  .lang-btn { min-width: 28px; padding: 0 4px; }
+}
+/* En teléfonos estrechos la cuenta se muestra solo con el icono (el texto queda para lectores de pantalla) */
+@media (max-width: 479px) {
+  .account-link { padding: 8px 10px; }
+  .account-text { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
+}
 
 /* Héroe: el logo oficial es la imagen principal */
 .hero {

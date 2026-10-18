@@ -384,6 +384,10 @@ export const DOC_TYPES_LABELS = {
 } as const;
 export type DocType = keyof typeof DOC_TYPES_LABELS;
 
+// Datos del título: no se piden para apartamentos (indicado por MAJ, 2026-10-18).
+export const TITLE_INFO_FIELDS = ["title_type", "title_registry_number", "cadastral_designation", "survey_status", "legal_status_certificate_date"] as const;
+export const asksTitleInfo = (propertyType: string) => propertyType !== "apartamento";
+
 export const privateSchema = z
   .object({
     owner_name: optText(160, "El nombre"),

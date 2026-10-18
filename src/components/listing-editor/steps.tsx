@@ -6,7 +6,7 @@ import {
   type PropertyType,
 } from "@/lib/catalog/definitions";
 import {
-  ID_TYPES, NUMERIC_LIMITS, NUMERIC_MODES, RELATIONSHIPS, SURVEY_STATUSES, featureKeys, initialNumericMode, initialSpaceValue,
+  ID_TYPES, NUMERIC_LIMITS, NUMERIC_MODES, RELATIONSHIPS, SURVEY_STATUSES, asksTitleInfo, featureKeys, initialNumericMode, initialSpaceValue,
   numericFieldKeys, operationsFor, spaceFieldKeys, type NumericMode,
 } from "@/lib/listing-editor/schemas";
 import type { EditorPrice, EditorPrivate, EditorProperty } from "@/lib/listing-editor/types";
@@ -278,7 +278,7 @@ export function StepFeatures({ propertyId, live, p }: StepProps & { p: Pick<Edit
 // ---------------------------------------------------------------------
 // 7. Datos privados (declarados por el vendedor, no verificados por MAJ)
 // ---------------------------------------------------------------------
-export function StepPrivate({ propertyId, live, priv }: StepProps & { priv: EditorPrivate | null }) {
+export function StepPrivate({ propertyId, live, priv, propertyType }: StepProps & { priv: EditorPrivate | null; propertyType: PropertyType }) {
   const v = priv ?? ({} as Partial<EditorPrivate>);
   const [exclusive, setExclusive] = useState(v.exclusivity === true ? "si" : v.exclusivity === false ? "no" : "");
   return (
@@ -327,11 +327,15 @@ export function StepPrivate({ propertyId, live, priv }: StepProps & { priv: Edit
               <strong>Declarado por el vendedor, no verificado por MAJ.</strong> Registrar estos datos no implica una revisión jurídica. MAJ solo indica una revisión documental cuando la realiza, con fecha y alcance.
             </p>
             <div className="form-grid">
-              <TextField name="title_type" label="Tipo de título" maxLength={120} defaultValue={v.title_type} errors={errors} placeholder="Ej.: Certificado de título" />
-              <TextField name="title_registry_number" label="Matrícula" maxLength={120} defaultValue={v.title_registry_number} errors={errors} />
-              <TextField name="cadastral_designation" label="Designación catastral" maxLength={160} defaultValue={v.cadastral_designation} errors={errors} />
-              <SelectField name="survey_status" label="Estado de deslinde" options={SURVEY_STATUSES} defaultValue={v.survey_status} placeholder="Sin indicar" errors={errors} />
-              <TextField name="legal_status_certificate_date" type="date" label="Fecha de la certificación del estado jurídico" defaultValue={v.legal_status_certificate_date} errors={errors} />
+              {asksTitleInfo(propertyType) ? (
+                <>
+                  <TextField name="title_type" label="Tipo de título" maxLength={120} defaultValue={v.title_type} errors={errors} placeholder="Ej.: Certificado de título" />
+                  <TextField name="title_registry_number" label="Matrícula" maxLength={120} defaultValue={v.title_registry_number} errors={errors} />
+                  <TextField name="cadastral_designation" label="Designación catastral" maxLength={160} defaultValue={v.cadastral_designation} errors={errors} />
+                  <SelectField name="survey_status" label="Estado de deslinde" options={SURVEY_STATUSES} defaultValue={v.survey_status} placeholder="Sin indicar" errors={errors} />
+                  <TextField name="legal_status_certificate_date" type="date" label="Fecha de la certificación del estado jurídico" defaultValue={v.legal_status_certificate_date} errors={errors} />
+                </>
+              ) : null}
               <TextAreaField className="span-2" name="declared_liens" label="Cargas o gravámenes declarados" maxLength={2000} rows={2} defaultValue={v.declared_liens} errors={errors} />
               <TextAreaField className="span-2" name="tax_notes" label="Notas sobre impuestos" maxLength={2000} rows={2} defaultValue={v.tax_notes} errors={errors} />
               <TextAreaField className="span-2" name="contract_notes" label="Notas sobre contratos" maxLength={2000} rows={2} defaultValue={v.contract_notes} errors={errors} />

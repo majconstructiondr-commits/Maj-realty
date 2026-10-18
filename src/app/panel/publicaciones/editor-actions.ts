@@ -12,7 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formToObject } from "@/lib/validation/requests";
 import {
   basicSchema, buildChangeSet, isLiveStatus, locationSchema, operationsFor, parseDistribution, parseFeatures, parsePrices,
-  privateSchema, zodFieldErrors, DOC_TYPES_LABELS, type ChangeSet, type PriceRow,
+  privateSchema, zodFieldErrors, asksTitleInfo, TITLE_INFO_FIELDS, DOC_TYPES_LABELS, type ChangeSet, type PriceRow,
 } from "@/lib/listing-editor/schemas";
 import type { EditorPrice, EditorProperty } from "@/lib/listing-editor/types";
 
@@ -199,6 +199,8 @@ export async function saveStep(_prev: ActionState, fd: FormData): Promise<Action
     case 7: {
       const r = privateSchema.safeParse(raw);
       if (!r.success) return invalid(zodFieldErrors(r.error));
+      // Sin esos campos en el formulario, no se tocan los datos del título que ya hubiera.
+      if (!asksTitleInfo(property.property_type)) for (const k of TITLE_INFO_FIELDS) delete (r.data as Record<string, unknown>)[k];
       if (!live) {
         const err = await updatePrivate(supabase, id, r.data);
         result = err ? { status: "error", message: err } : { status: "ok", message: "Datos privados guardados." };

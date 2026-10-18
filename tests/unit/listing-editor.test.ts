@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   basicSchema, buildChangeSet, initialNumericMode, initialSpaceValue, isLiveStatus, locationSchema, mergeSection, missingForReview,
-  newDraftSchema, numericFieldKeys, parseDistribution, parseFeatures, parsePrices, parseStep, privateSchema, samePrices,
+  newDraftSchema, numericFieldKeys, parseDistribution, parseFeatures, parsePrices, parseStep, privateSchema, samePrices, asksTitleInfo,
 } from "@/lib/listing-editor/schemas";
 import { availableActions, duplicateTitle } from "@/lib/listing-editor/transitions";
 
@@ -172,6 +172,11 @@ describe("paso 7: datos privados", () => {
     expect(privateSchema.safeParse({ publication_authorized: "on", authorization_date: "2026-10-01", authorization_expires: "2026-09-01" }).success).toBe(false);
     const ok = privateSchema.parse({ publication_authorized: "on", authorization_date: "2026-10-01", exclusivity: "si", owner_email: "", survey_status: "deslindado" });
     expect(ok).toMatchObject({ publication_authorized: true, exclusivity: true, owner_email: null, survey_status: "deslindado" });
+  });
+  it("los datos del título no se piden para apartamentos", () => {
+    expect(asksTitleInfo("apartamento")).toBe(false);
+    expect(asksTitleInfo("casa")).toBe(true);
+    expect(asksTitleInfo("solar")).toBe(true);
   });
   it("exclusividad sin indicar es null y no admite vencimiento", () => {
     expect(privateSchema.parse({}).exclusivity).toBeNull();

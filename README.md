@@ -1,6 +1,6 @@
 # MAJ REALTY SRL · Plataforma inmobiliaria
 
-Aplicación web para vender, rentar y administrar inmuebles en República Dominicana, con solicitudes de remodelación, cotizaciones y gestiones legales. Español como idioma inicial, estructura preparada para inglés.
+Aplicación web para vender, rentar y administrar inmuebles en República Dominicana, con solicitudes de remodelación, cotizaciones y gestiones legales. Español por defecto; el sitio público también se muestra en inglés (selector ES | EN en el encabezado, guardado en la cookie `idioma`; textos en `src/i18n/`).
 
 **Tecnología:** Next.js 16 (App Router, TypeScript) · Supabase (PostgreSQL con seguridad por filas, autenticación con MFA, almacenamiento privado, tiempo real) · CSS propio adaptable (primero móvil) · Leaflet + OpenStreetMap para mapas aproximados. Sin dependencias de pago obligatorias.
 

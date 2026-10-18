@@ -1,5 +1,9 @@
 import { z } from "zod";
 import { PROPERTY_TYPES } from "../catalog/definitions";
+import { es } from "@/i18n/es";
+
+// Mensajes en español desde el diccionario; la acción los traduce con localizeMessage.
+const m = es.validation;
 
 const s = (max: number) => z.string().trim().max(max);
 const optS = (max: number) => z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? undefined : v), s(max).optional());
@@ -11,18 +15,18 @@ const bool = z.preprocess((v) => v === "on" || v === "true" || v === true, z.boo
 
 export const contactSchema = z
   .object({
-    contact_name: s(160).min(2, "Indique su nombre"),
-    contact_email: z.preprocess((v) => (v === "" ? undefined : v), z.email("Correo no válido").max(160).optional()),
+    contact_name: s(160).min(2, m.name),
+    contact_email: z.preprocess((v) => (v === "" ? undefined : v), z.email(m.email).max(160).optional()),
     contact_phone: z.preprocess(
       (v) => (v === "" ? undefined : v),
-      z.string().trim().regex(/^[0-9+()\s-]{7,25}$/, "Teléfono no válido").optional(),
+      z.string().trim().regex(/^[0-9+()\s-]{7,25}$/, m.phone).optional(),
     ),
     preferred_channel: z.enum(["whatsapp", "llamada", "correo", "chat"]).default("whatsapp"),
     message: optS(4000),
-    contact_consent: bool.refine((v) => v, "Debe autorizar el contacto para atender su solicitud"),
+    contact_consent: bool.refine((v) => v, m.consent),
     marketing_consent: bool,
   })
-  .refine((d) => d.contact_email || d.contact_phone, { message: "Indique un correo o un teléfono", path: ["contact_phone"] });
+  .refine((d) => d.contact_email || d.contact_phone, { message: m.phoneOrEmail, path: ["contact_phone"] });
 
 const type = z.preprocess((v) => (v === "" ? undefined : v), z.enum(Object.keys(PROPERTY_TYPES) as [string, ...string[]]).optional());
 const currency = z.preprocess((v) => (v === "" ? undefined : v), z.enum(["DOP", "USD"]).optional());
@@ -48,28 +52,28 @@ export const detailSchemas = {
     situacion_actual: optS(1000),
   }),
   remodelacion: z.object({
-    tipo_trabajo: s(120).min(2, "Indique el tipo de trabajo"),
+    tipo_trabajo: s(120).min(2, m.workType),
     area_m2: optN, alcance: optS(2000), presupuesto: optN, moneda: currency,
     provincia: optS(80), municipio: optS(80), sector: optS(120),
     fecha_deseada: optS(20), urgencia: z.enum(["baja", "normal", "alta"]).default("normal"), visita_tecnica: bool,
   }),
   cotizacion: z.object({
     servicio: z.enum(["remodelacion", "administracion", "legal", "venta", "renta", "otro"]),
-    referencia_inmueble: optS(60), alcance: s(2000).min(10, "Describa el alcance (mínimo 10 caracteres)"),
+    referencia_inmueble: optS(60), alcance: s(2000).min(10, m.scope),
   }),
   legal: z.object({
     service_codes: z.preprocess(
       (v) => (Array.isArray(v) ? v : v ? [v] : []),
-      z.array(z.string().regex(/^[a-z0-9_]{2,40}$/)).min(1, "Seleccione al menos un servicio").max(20),
+      z.array(z.string().regex(/^[a-z0-9_]{2,40}$/)).min(1, m.legalService).max(20),
     ),
-    descripcion: s(2000).min(10, "Describa su caso (mínimo 10 caracteres)"), referencia_inmueble: optS(60),
+    descripcion: s(2000).min(10, m.legalCase), referencia_inmueble: optS(60),
   }).transform(({ service_codes, ...d }) => {
     const codes = [...new Set(service_codes)];
     // service_code (el primero) mantiene la validación existente de la base de datos.
     return { ...d, service_code: codes[0], service_codes: codes };
   }),
   busco_propiedad: z.object({
-    operacion: z.enum(["venta", "renta"]), zonas: s(300).min(2, "Indique al menos una zona"),
+    operacion: z.enum(["venta", "renta"]), zonas: s(300).min(2, m.zones),
     presupuesto_max: optN, moneda: currency, tipo: type, habitaciones: optN, fecha: optS(20),
   }),
   publicar_propiedad: z.object({ tipo_publicador: z.enum(["propietario", "vendedor", "agencia"]) }),

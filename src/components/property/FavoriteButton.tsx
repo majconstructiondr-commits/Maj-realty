@@ -3,12 +3,14 @@ import { useState, useTransition } from "react";
 import { usePathname } from "next/navigation";
 import { toggleFavorite } from "@/app/actions/listing";
 import { Icon } from "../ui/Icon";
+import { useI18n } from "@/i18n/client";
 
 export function FavoriteButton({ propertyId, initial }: { propertyId: string; initial: boolean }) {
   const [fav, setFav] = useState(initial);
   const [msg, setMsg] = useState("");
   const [pending, start] = useTransition();
   const path = usePathname();
+  const { d } = useI18n();
   return (
     <>
       <button
@@ -24,7 +26,7 @@ export function FavoriteButton({ propertyId, initial }: { propertyId: string; in
           })
         }
       >
-        <Icon name="heart" size={18} /> {fav ? "En favoritos" : "Guardar favorito"}
+        <Icon name="heart" size={18} /> {fav ? d.share.inFavorites : d.share.saveFavorite}
       </button>
       {msg ? <span role="status" className="xs muted">{msg}</span> : null}
     </>

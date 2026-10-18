@@ -1,55 +1,63 @@
-import { PROPERTY_TYPES, PROVINCES } from "@/lib/catalog/definitions";
+import { PROVINCES } from "@/lib/catalog/definitions";
+import { es, type Dictionary } from "@/i18n/es";
 
-export function TypeSelect({ id, name = "tipo", required = false, label = "Tipo de inmueble" }: { id: string; name?: string; required?: boolean; label?: string }) {
+export function TypeSelect({ id, name = "tipo", required = false, label, d = es }: { id: string; name?: string; required?: boolean; label?: string; d?: Dictionary }) {
   return (
     <div className="field">
-      <label htmlFor={id} className={required ? "required" : undefined}>{label}</label>
+      <label htmlFor={id} className={required ? "required" : undefined}>{label ?? d.common.propertyType}</label>
       <select id={id} name={name} className="select" defaultValue="" required={required}>
-        <option value="">Seleccione…</option>
-        {Object.entries(PROPERTY_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        <option value="">{d.common.select}</option>
+        {Object.entries(d.labels.propertyTypes).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
       </select>
     </div>
   );
 }
 
-export function LocationFields({ prefix }: { prefix: string }) {
+export function LocationFields({ prefix, d = es }: { prefix: string; d?: Dictionary }) {
   return (
     <>
       <div className="field">
-        <label htmlFor={`${prefix}-prov`}>Provincia</label>
+        <label htmlFor={`${prefix}-prov`}>{d.common.province}</label>
         <select id={`${prefix}-prov`} name="provincia" className="select" defaultValue="">
-          <option value="">Seleccione…</option>
+          <option value="">{d.common.select}</option>
           {PROVINCES.map((p) => <option key={p}>{p}</option>)}
         </select>
       </div>
       <div className="field">
-        <label htmlFor={`${prefix}-mun`}>Municipio</label>
+        <label htmlFor={`${prefix}-mun`}>{d.common.municipality}</label>
         <input id={`${prefix}-mun`} name="municipio" className="input" maxLength={80} />
       </div>
       <div className="field">
-        <label htmlFor={`${prefix}-sec`}>Sector</label>
+        <label htmlFor={`${prefix}-sec`}>{d.common.sector}</label>
         <input id={`${prefix}-sec`} name="sector" className="input" maxLength={120} />
-        <span className="hint">No es necesario indicar la dirección exacta en este paso.</span>
+        <span className="hint">{d.form.exactAddressHint}</span>
       </div>
     </>
   );
 }
 
-export function MoneyFields({ prefix, amountName, label }: { prefix: string; amountName: string; label: string }) {
+/** Moneda: pesos o dólares (los importes nunca se mezclan). */
+export function CurrencySelect({ id, d = es }: { id: string; d?: Dictionary }) {
+  return (
+    <div className="field">
+      <label htmlFor={id}>{d.common.currency}</label>
+      <select id={id} name="moneda" className="select" defaultValue="">
+        <option value="">{d.common.select}</option>
+        <option value="DOP">{d.common.currencyDOP}</option>
+        <option value="USD">{d.common.currencyUSD}</option>
+      </select>
+    </div>
+  );
+}
+
+export function MoneyFields({ prefix, amountName, label, d = es }: { prefix: string; amountName: string; label: string; d?: Dictionary }) {
   return (
     <>
       <div className="field">
         <label htmlFor={`${prefix}-amt`}>{label}</label>
         <input id={`${prefix}-amt`} name={amountName} className="input" inputMode="decimal" />
       </div>
-      <div className="field">
-        <label htmlFor={`${prefix}-cur`}>Moneda</label>
-        <select id={`${prefix}-cur`} name="moneda" className="select" defaultValue="">
-          <option value="">Seleccione…</option>
-          <option value="DOP">Pesos (RD$)</option>
-          <option value="USD">Dólares (US$)</option>
-        </select>
-      </div>
+      <CurrencySelect id={`${prefix}-cur`} d={d} />
     </>
   );
 }

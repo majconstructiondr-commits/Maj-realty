@@ -15,6 +15,7 @@ export function WhatsAppLink({
   propertyId,
   className = "btn btn-whatsapp",
   floating = false,
+  opensHint = "(se abre WhatsApp)",
 }: {
   number: string;
   text?: string;
@@ -22,6 +23,7 @@ export function WhatsAppLink({
   propertyId?: string;
   className?: string;
   floating?: boolean;
+  opensHint?: string;
 }) {
   const href = whatsappLink(number, text);
   function onClick() {
@@ -39,7 +41,7 @@ export function WhatsAppLink({
       rel="noopener noreferrer"
       className={floating ? "wa-float" : className}
       onClick={onClick}
-      aria-label={floating ? `${label} (se abre WhatsApp)` : undefined}
+      aria-label={floating ? `${label} ${opensHint}` : undefined}
     >
       <Icon name="whatsapp" size={floating ? 24 : 20} />
       <span>{label}</span>

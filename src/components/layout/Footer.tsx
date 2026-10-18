@@ -1,53 +1,55 @@
 import Link from "next/link";
 import type { SiteSettings } from "@/lib/site";
 import { whatsappLink } from "@/lib/whatsapp";
+import type { Dictionary } from "@/i18n/es";
 import { BrandLogo } from "./BrandLogo";
 
-export function Footer({ s }: { s: SiteSettings }) {
+export function Footer({ s, d }: { s: SiteSettings; d: Dictionary }) {
+  const f = d.footer;
   const year = new Date().getFullYear();
   return (
     <footer className="site-footer">
       <div className="container section">
         <div className="grid-4">
           <div className="stack">
-            <Link href="/" className="footer-logo" aria-label="MAJ REALTY, ir al inicio">
-              <BrandLogo variant="footer" />
+            <Link href="/" className="footer-logo" aria-label={d.header.homeAria}>
+              <BrandLogo variant="footer" alt={d.header.logoAlt} />
             </Link>
-            <p className="small">Venta, renta, administración, remodelaciones y gestiones de propiedades en República Dominicana.</p>
+            <p className="small">{f.tagline}</p>
           </div>
           <div>
-            <h3>Inmuebles</h3>
+            <h3>{f.properties}</h3>
             <ul>
-              <li><Link href="/venta">Venta</Link></li>
-              <li><Link href="/renta">Renta</Link></li>
-              <li><Link href="/busco-propiedad">Busco una propiedad</Link></li>
-              <li><Link href="/publica-tu-propiedad">Publica tu propiedad</Link></li>
-              <li><Link href="/calculadora-hipotecaria">Calculadora hipotecaria</Link></li>
-              <li><Link href="/app">Descarga la app</Link></li>
+              <li><Link href="/venta">{d.nav.sale}</Link></li>
+              <li><Link href="/renta">{d.nav.rent}</Link></li>
+              <li><Link href="/busco-propiedad">{f.lookingFor}</Link></li>
+              <li><Link href="/publica-tu-propiedad">{f.publish}</Link></li>
+              <li><Link href="/calculadora-hipotecaria">{f.mortgage}</Link></li>
+              <li><Link href="/app">{f.app}</Link></li>
             </ul>
           </div>
           <div>
-            <h3>Servicios</h3>
+            <h3>{f.services}</h3>
             <ul>
-              <li><Link href="/administracion">Administración</Link></li>
-              <li><Link href="/remodelaciones">Remodelaciones</Link></li>
-              <li><Link href="/cotizaciones">Cotizaciones</Link></li>
-              <li><Link href="/gestiones-legales">Gestiones legales</Link></li>
-              <li><Link href="/nosotros">Nosotros</Link></li>
+              <li><Link href="/administracion">{d.nav.management}</Link></li>
+              <li><Link href="/remodelaciones">{d.nav.remodeling}</Link></li>
+              <li><Link href="/cotizaciones">{d.nav.quotes}</Link></li>
+              <li><Link href="/gestiones-legales">{d.nav.legal}</Link></li>
+              <li><Link href="/nosotros">{d.nav.about}</Link></li>
             </ul>
           </div>
           <div>
-            <h3>Contacto</h3>
+            <h3>{f.contact}</h3>
             <ul>
               {s["company.phones"].map((p) => (
-                <li key={p}><a href={`tel:+1${p.replace(/\D/g, "")}`}>Tel. {p}</a></li>
+                <li key={p}><a href={`tel:+1${p.replace(/\D/g, "")}`}>{f.phone} {p}</a></li>
               ))}
               <li><a href={whatsappLink(s["whatsapp.primary"])} target="_blank" rel="noopener noreferrer">WhatsApp</a></li>
-              {s["whatsapp.secondary"] ? <li><a href={whatsappLink(s["whatsapp.secondary"])} target="_blank" rel="noopener noreferrer">WhatsApp alternativo</a></li> : null}
+              {s["whatsapp.secondary"] ? <li><a href={whatsappLink(s["whatsapp.secondary"])} target="_blank" rel="noopener noreferrer">{f.whatsappAlt}</a></li> : null}
               {s["company.email"] ? <li><a href={`mailto:${s["company.email"]}`}>{s["company.email"]}</a></li> : null}
               {s["company.address"] ? <li>{s["company.address"]}</li> : null}
               {s["company.hours"] ? <li>{s["company.hours"]}</li> : null}
-              <li><Link href="/contacto">Formulario de contacto</Link></li>
+              <li><Link href="/contacto">{f.contactForm}</Link></li>
             </ul>
           </div>
         </div>
@@ -59,11 +61,11 @@ export function Footer({ s }: { s: SiteSettings }) {
             {s["company.rnc"] ? ` · RNC ${s["company.rnc"]}` : ""}
           </span>
           <span className="row" style={{ gap: 14 }}>
-            <Link href="/legal/privacidad">Privacidad</Link>
-            <Link href="/legal/terminos">Términos</Link>
-            <Link href="/legal/cookies">Cookies</Link>
-            <Link href="/legal/reclamaciones">Reclamaciones</Link>
-            <Link href="/legal">Documentos legales</Link>
+            <Link href="/legal/privacidad">{f.privacy}</Link>
+            <Link href="/legal/terminos">{f.terms}</Link>
+            <Link href="/legal/cookies">{f.cookies}</Link>
+            <Link href="/legal/reclamaciones">{f.complaints}</Link>
+            <Link href="/legal">{f.legalDocs}</Link>
           </span>
         </div>
       </div>

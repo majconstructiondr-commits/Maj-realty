@@ -1,14 +1,15 @@
-import { t } from "@/i18n";
+import type { Dictionary } from "@/i18n/es";
 
-export const mainNav = [
-  { href: "/", label: t.nav.home },
-  { href: "/venta", label: t.nav.sale },
-  { href: "/renta", label: t.nav.rent },
-  { href: "/administracion", label: t.nav.management },
-  { href: "/remodelaciones", label: t.nav.remodeling },
-  { href: "/cotizaciones", label: t.nav.quotes },
-  { href: "/gestiones-legales", label: t.nav.legal },
-  { href: "/publica-tu-propiedad", label: t.nav.publish },
-  { href: "/nosotros", label: t.nav.about },
-  { href: "/contacto", label: t.nav.contact },
+// Menú principal: el texto de cada enlace sale del diccionario del idioma activo.
+export const mainNav: { href: string; key: keyof Dictionary["nav"] }[] = [
+  { href: "/", key: "home" },
+  { href: "/venta", key: "sale" },
+  { href: "/renta", key: "rent" },
+  { href: "/administracion", key: "management" },
+  { href: "/remodelaciones", key: "remodeling" },
+  { href: "/cotizaciones", key: "quotes" },
+  { href: "/gestiones-legales", key: "legal" },
+  { href: "/publica-tu-propiedad", key: "publish" },
+  { href: "/nosotros", key: "about" },
+  { href: "/contacto", key: "contact" },
 ];

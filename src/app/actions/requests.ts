@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { checkHuman, clientIpHash, dbErrorMessage, rateLimit } from "@/lib/security";
 import { contactSchema, detailSchemas, fieldErrors, formToObject, type RequestKindWithSchema } from "@/lib/validation/requests";
 import { getSiteSettings } from "@/lib/site";
+import { localizeMessage } from "@/i18n";
+import { getI18n } from "@/i18n/server";
 
 export type RequestState =
   | { status: "idle" }
@@ -16,31 +18,31 @@ export type RequestState =
  */
 export async function submitServiceRequest(_prev: RequestState, fd: FormData): Promise<RequestState> {
   const kind = String(fd.get("kind") ?? "") as RequestKindWithSchema;
-  if (!(kind in detailSchemas)) return { status: "error", message: "Tipo de solicitud no válido." };
+  const { locale, d } = await getI18n();
+  const a = d.actions;
+  if (!(kind in detailSchemas)) return { status: "error", message: a.invalidKind };
 
   if (!hasSupabase) {
-    return {
-      status: "error",
-      message: "Modo demostración: la base de datos no está configurada y su solicitud NO se guardó. Escríbanos por WhatsApp.",
-    };
+    return { status: "error", message: a.demoRequest };
   }
   if (!(await checkHuman(fd))) {
-    return { status: "error", message: "No pudimos verificar el envío. Espere unos segundos e intente de nuevo." };
+    return { status: "error", message: a.humanCheck };
   }
   const ip = await clientIpHash();
   if (!rateLimit(`req:${ip}`, 8, 60 * 60 * 1000)) {
-    return { status: "error", message: "Demasiados envíos desde su conexión. Intente más tarde o escríbanos por WhatsApp." };
+    return { status: "error", message: a.tooMany };
   }
 
   const raw = formToObject(fd);
   const contact = contactSchema.safeParse(raw);
   const details = detailSchemas[kind].safeParse(raw);
   if (!contact.success || !details.success) {
-    const errors = {
+    const errors: Record<string, string> = {
       ...(contact.success ? {} : fieldErrors(contact.error)),
       ...(details.success ? {} : fieldErrors(details.error)),
     };
-    return { status: "error", message: "Revise los campos marcados.", errors };
+    for (const k of Object.keys(errors)) errors[k] = localizeMessage(errors[k], locale);
+    return { status: "error", message: a.reviewFields, errors };
   }
   const propertyId = typeof raw.property_id === "string" && /^[0-9a-f-]{36}$/.test(raw.property_id) ? raw.property_id : null;
   const propertyRef = typeof raw.property_ref === "string" ? raw.property_ref.slice(0, 60) : null;
@@ -61,6 +63,6 @@ export async function submitServiceRequest(_prev: RequestState, fd: FormData): P
     p_marketing_consent: contact.data.marketing_consent,
     p_consent_version: s["legal.documents_version"],
   });
-  if (error || !data?.number) return { status: "error", message: dbErrorMessage(error) };
+  if (error || !data?.number) return { status: "error", message: localizeMessage(dbErrorMessage(error), locale) };
   return { status: "ok", number: data.number, createdAt: data.created_at, id: data.id, uploadToken: data.upload_token };
 }

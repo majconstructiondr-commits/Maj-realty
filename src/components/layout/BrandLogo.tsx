@@ -6,14 +6,14 @@ import { env } from "@/lib/env";
  */
 const SMALL = "/brand/maj-realty-logo-sm.webp";
 
-export function BrandLogo({ variant = "header" }: { variant?: "header" | "footer" | "hero" }) {
+export function BrandLogo({ variant = "header", alt = "MAJ REALTY SRL · Venta, Renta, Remodelaciones" }: { variant?: "header" | "footer" | "hero"; alt?: string }) {
   const custom = env.logoSrc !== "/brand/maj-realty-logo.webp";
   const src = custom ? env.logoSrc : variant === "hero" ? env.logoSrc : SMALL;
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={src}
-      alt="MAJ REALTY SRL · Venta, Renta, Remodelaciones"
+      alt={alt}
       className={`brand-logo brand-logo-${variant}`}
       width={variant === "hero" ? 1200 : 480}
       height={variant === "hero" ? 600 : 240}

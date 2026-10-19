@@ -7,6 +7,7 @@ import { labelFor, staffCtx, userLabels } from "@/lib/admin/server";
 import { formatDate, formatMoney, type Currency } from "@/lib/format";
 import { createMajListing } from "./actions";
 import { getI18n } from "@/i18n/server";
+import { env } from "@/lib/env";
 
 const BASE = "/admin/inmuebles";
 const SORTS = ["updated_at", "created_at", "submitted_at", "code", "title"] as const;
@@ -68,6 +69,12 @@ export default async function AdminProperties(props: PageProps<"/admin/inmuebles
         <Link className="btn btn-outline btn-sm" href="/admin/inmuebles/importar">{t.import}</Link>
         <a className="btn btn-ghost btn-sm" href={exportHref}>{c.exportCsv}</a>
       </PageHeader>
+
+      <details className="card card-body" style={{ marginBottom: 16 }}>
+        <summary><strong>{t.feedTitle}</strong></summary>
+        <p className="small muted">{t.feedNote}</p>
+        <input className="input" readOnly value={`${env.siteUrl}/feeds/facebook.xml`} aria-label={t.feedLabel} />
+      </details>
 
       <details className="card card-body" style={{ marginBottom: 16 }}>
         <summary><strong>{t.createMaj}</strong></summary>

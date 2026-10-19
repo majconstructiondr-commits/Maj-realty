@@ -4,13 +4,15 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { hasSupabase } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
+import { getI18n } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request, ctx: RouteContext<"/panel/publicaciones/[id]/documentos/[docId]">) {
   const { id, docId } = await ctx.params;
+  const t = (await getI18n()).d.editor.docs;
   if (!hasSupabase || !z.uuid().safeParse(id).success || !z.uuid().safeParse(docId).success) {
-    return new NextResponse("No encontrado", { status: 404 });
+    return new NextResponse(t.notFound, { status: 404 });
   }
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
@@ -25,9 +27,9 @@ export async function GET(request: Request, ctx: RouteContext<"/panel/publicacio
     .eq("id", docId)
     .eq("property_id", id)
     .maybeSingle();
-  if (!doc) return new NextResponse("Documento no encontrado o sin permiso", { status: 404 });
+  if (!doc) return new NextResponse(t.notFoundOrForbidden, { status: 404 });
   const { data, error } = await supabase.storage.from("private-docs").createSignedUrl(doc.storage_path, 60, { download: doc.file_name });
-  if (error || !data?.signedUrl) return new NextResponse("No se pudo generar el enlace de descarga", { status: 502 });
+  if (error || !data?.signedUrl) return new NextResponse(t.linkFailed, { status: 502 });
   const res = NextResponse.redirect(data.signedUrl, 303);
   res.headers.set("Cache-Control", "no-store");
   res.headers.set("Referrer-Policy", "no-referrer");

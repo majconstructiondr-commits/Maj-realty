@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { hasSupabase } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
+import { getI18n } from "@/i18n/server";
 
 /** Cierra la sesión (solo POST, para evitar cierres por enlaces o precarga). */
 export async function POST(request: NextRequest) {
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest) {
     } catch {
       originHost = "";
     }
-    if (originHost !== host) return new NextResponse("Origen no permitido", { status: 403 });
+    if (originHost !== host) return new NextResponse((await getI18n()).d.account.originNotAllowed, { status: 403 });
   }
   if (hasSupabase) {
     const supabase = await createClient();

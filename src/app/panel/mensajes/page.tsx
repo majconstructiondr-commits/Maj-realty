@@ -4,13 +4,19 @@ import { requireUser } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
 import { isUnread } from "@/lib/panel/conversations";
 import { createClient } from "@/lib/supabase/server";
+import { fmt } from "@/i18n";
+import { getI18n } from "@/i18n/server";
 
-export const metadata: Metadata = { title: "Mensajes" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).d.panel.messages.meta };
+}
 
 type Conv = { id: string; subject: string; status: string; last_message_at: string; property_id: string | null; request_id: string | null };
 
 export default async function Page() {
   const u = await requireUser("/panel/mensajes");
+  const { d } = await getI18n();
+  const t = d.panel.messages;
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("conversation_participants")
@@ -24,13 +30,13 @@ export default async function Page() {
 
   return (
     <div className="stack" style={{ paddingBottom: 32 }}>
-      <h1>Mensajes</h1>
-      <p className="small muted">Chat interno de MAJ REALTY. No está conectado a WhatsApp: un mensaje solo se considera enviado cuando aparece aquí.</p>
-      {error ? <p className="alert alert-error" role="alert">No se pudieron cargar sus conversaciones.</p> : null}
+      <h1>{t.title}</h1>
+      <p className="small muted">{t.lead}</p>
+      {error ? <p className="alert alert-error" role="alert">{t.error}</p> : null}
       {!error && rows.length === 0 ? (
         <div className="card empty">
-          <p>No tiene conversaciones. Puede iniciar una desde la ficha de un inmueble o desde una de sus solicitudes.</p>
-          <Link className="btn btn-primary" href="/venta">Ver inmuebles</Link>
+          <p>{t.empty}</p>
+          <Link className="btn btn-primary" href="/venta">{d.panel.shared.viewProperties}</Link>
         </div>
       ) : null}
       {rows.length ? (
@@ -45,13 +51,13 @@ export default async function Page() {
                       {conv.subject}
                     </Link>
                     <div className="xs muted">
-                      Último mensaje: {formatDate(conv.last_message_at, true)}
-                      {role === "publicador" ? " · Como publicador" : ""}
+                      {fmt(t.lastMessage, { date: formatDate(conv.last_message_at, true) })}
+                      {role === "publicador" ? t.asPublisher : ""}
                     </div>
                   </div>
                   <div className="row" style={{ gap: 6 }}>
-                    {unread ? <span className="badge badge-gold">Sin leer</span> : null}
-                    {conv.status !== "abierta" ? <span className="badge">{conv.status === "cerrada" ? "Cerrada" : "Bloqueada"}</span> : null}
+                    {unread ? <span className="badge badge-gold">{t.unread}</span> : null}
+                    {conv.status !== "abierta" ? <span className="badge">{conv.status === "cerrada" ? t.closed : t.blocked}</span> : null}
                   </div>
                 </div>
               </li>

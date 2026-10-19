@@ -5,11 +5,13 @@ import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { listingHref } from "@/components/property/ListingCard";
+import { fmt } from "@/i18n";
+import { getI18n } from "@/i18n/server";
 import { ChatRoom, type ChatMessage } from "./ChatRoom";
 
-export const metadata: Metadata = { title: "Conversación" };
-
-const ROLE_LABEL: Record<string, string> = { cliente: "Cliente", publicador: "Publicador", personal: "Equipo MAJ" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).d.panel.conversation.meta };
+}
 
 export default async function Page(props: PageProps<"/panel/mensajes/[id]">) {
   const { id } = await props.params;
@@ -34,17 +36,20 @@ export default async function Page(props: PageProps<"/panel/mensajes/[id]">) {
     conv.property_id ? supabase.from("catalog").select("code, slug, title").eq("id", conv.property_id).maybeSingle() : Promise.resolve({ data: null }),
   ]);
   const isParticipant = (participants ?? []).some((p) => p.user_id === u.id);
+  const { d } = await getI18n();
+  const t = d.panel.conversation;
+  const ROLE_LABEL = t.roles;
 
   const names: Record<string, string> = {};
   await Promise.all(
     (participants ?? []).map(async (p) => {
       if (p.user_id === u.id) {
-        names[p.user_id] = "Usted";
+        names[p.user_id] = d.panel.shared.you;
         return;
       }
       const { data } = await supabase.rpc("public_name", { p_user: p.user_id });
       const role = ROLE_LABEL[p.participant_role] ?? "";
-      names[p.user_id] = data ? `${data}${role ? ` (${role})` : ""}` : role || "Participante";
+      names[p.user_id] = data ? `${data}${role ? ` (${role})` : ""}` : role || d.panel.shared.participant;
     }),
   );
 
@@ -59,17 +64,17 @@ export default async function Page(props: PageProps<"/panel/mensajes/[id]">) {
 
   return (
     <div className="stack" style={{ paddingBottom: 32 }}>
-      <nav aria-label="Ruta" className="small muted">
-        <Link href="/panel/mensajes">Mensajes</Link> / <span aria-current="page">{conv.subject}</span>
+      <nav aria-label={d.common.breadcrumb} className="small muted">
+        <Link href="/panel/mensajes">{d.panel.messages.title}</Link> / <span aria-current="page">{conv.subject}</span>
       </nav>
       <h1 style={{ margin: 0 }}>{conv.subject}</h1>
       <p className="small muted" style={{ margin: 0 }}>
-        {property ? <>Inmueble: <Link href={listingHref(property)}>{property.title} ({property.code})</Link> · </> : null}
-        {conv.request_id ? <><Link href={`/panel/solicitudes/${conv.request_id}`}>Ver solicitud</Link> · </> : null}
-        Participantes: {Object.values(names).join(", ") || "—"}
+        {property ? <>{d.panel.shared.propertyLabel} <Link href={listingHref(property)}>{property.title} ({property.code})</Link> · </> : null}
+        {conv.request_id ? <><Link href={`/panel/solicitudes/${conv.request_id}`}>{d.panel.shared.viewRequest}</Link> · </> : null}
+        {fmt(t.participants, { names: Object.values(names).join(", ") || "—" })}
       </p>
       <p className="xs muted" style={{ margin: 0 }}>
-        Este chat es interno de la página y no está conectado a WhatsApp. No comparta contraseñas ni datos bancarios por este medio.
+        {t.notWhatsapp}
       </p>
       <ChatRoom
         conversationId={conv.id}

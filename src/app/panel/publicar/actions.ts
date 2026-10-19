@@ -11,40 +11,50 @@ import { getSiteSettings } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
 import { formToObject } from "@/lib/validation/requests";
 import { checkbox, optEmail, optText, zodFieldErrors } from "@/lib/listing-editor/schemas";
+import { localizeState } from "@/i18n";
+import { es } from "@/i18n/es";
+import { getLocale } from "@/i18n/server";
+
+// Mensajes en español desde el diccionario; las acciones exportadas los traducen al responder.
+const M = es.panel.msg;
+const F = es.editor.fieldLabels;
 
 const appSchema = z
   .object({
-    applicant_type: z.enum(["propietario", "vendedor", "agencia"], { error: "Indique cómo va a publicar" }),
-    full_name: z.string({ error: "Indique su nombre completo" }).trim().min(2, "Indique su nombre completo").max(160),
-    phone: z.preprocess((v) => (typeof v === "string" && v.trim() ? v.trim() : null), z.string().regex(/^[0-9+()\s-]{7,25}$/, "Teléfono no válido").nullable()),
-    requested_plan_id: z.preprocess((v) => (v ? v : null), z.uuid("Plan no válido").nullable()),
-    notes: optText(1500, "Las notas"),
-    accept_terms: checkbox.refine((v) => v, "Debe aceptar las condiciones de publicación"),
+    applicant_type: z.enum(["propietario", "vendedor", "agencia"], { error: M.applicantType }),
+    full_name: z.string({ error: M.fullName }).trim().min(2, M.fullName).max(160),
+    phone: z.preprocess((v) => (typeof v === "string" && v.trim() ? v.trim() : null), z.string().regex(/^[0-9+()\s-]{7,25}$/, M.phoneShort).nullable()),
+    requested_plan_id: z.preprocess((v) => (v ? v : null), z.uuid(M.planInvalid).nullable()),
+    notes: optText(1500, F.notes),
+    accept_terms: checkbox.refine((v) => v, M.acceptPublishTerms),
     id_doc_path: z.preprocess((v) => (typeof v === "string" && v ? v : null), z.string().max(300).nullable()),
-    org_name: optText(160, "El nombre de la agencia"),
-    org_legal_name: optText(200, "La razón social"),
-    org_rnc: z.preprocess((v) => (typeof v === "string" && v.trim() ? v.trim() : null), z.string().regex(/^[0-9-]{9,20}$/, "RNC no válido").nullable()),
-    org_phone: optText(40, "El teléfono"),
+    org_name: optText(160, F.orgName),
+    org_legal_name: optText(200, F.legalName),
+    org_rnc: z.preprocess((v) => (typeof v === "string" && v.trim() ? v.trim() : null), z.string().regex(/^[0-9-]{9,20}$/, M.rncInvalid).nullable()),
+    org_phone: optText(40, F.phone),
     org_email: optEmail,
   })
   .superRefine((d, ctx) => {
     if (d.applicant_type === "agencia" && (!d.org_name || d.org_name.length < 2)) {
-      ctx.addIssue({ code: "custom", path: ["org_name"], message: "Indique el nombre comercial de la agencia" });
+      ctx.addIssue({ code: "custom", path: ["org_name"], message: M.agencyName });
     }
   });
 
 export async function submitApplication(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  if (!hasSupabase) return { status: "error", message: "Modo demostración: la base de datos no está configurada." };
+  return localizeState(await submitApplicationEs(_prev, fd), await getLocale());
+}
+async function submitApplicationEs(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  if (!hasSupabase) return { status: "error", message: M.demoDb };
   const user = await getSessionUser();
-  if (!user) return { status: "error", message: "Su sesión expiró. Inicie sesión de nuevo." };
-  if (!user.emailConfirmed) return { status: "error", message: "Primero verifique su correo electrónico con el enlace que le enviamos." };
+  if (!user) return { status: "error", message: M.sessionExpired };
+  if (!user.emailConfirmed) return { status: "error", message: M.verifyEmailFirst };
   const r = appSchema.safeParse(formToObject(fd));
-  if (!r.success) return { status: "error", message: "Revise los campos marcados.", errors: zodFieldErrors(r.error) };
+  if (!r.success) return { status: "error", message: M.reviewFields, errors: zodFieldErrors(r.error) };
   const d = r.data;
   if (d.id_doc_path) {
     const prefix = `profiles/${user.id}/`;
     if (!d.id_doc_path.startsWith(prefix) || !/^[A-Za-z0-9._-]{1,200}$/.test(d.id_doc_path.slice(prefix.length))) {
-      return { status: "error", message: "Documento no válido." };
+      return { status: "error", message: M.docInvalid };
     }
   }
   const supabase = await createClient();
@@ -55,19 +65,19 @@ export async function submitApplication(_prev: ActionState, fd: FormData): Promi
     .eq("user_id", user.id)
     .in("status", ["pendiente", "documentos_requeridos"])
     .limit(1);
-  if (open?.length) return { status: "error", message: "Ya tiene una solicitud en revisión. Le avisaremos cuando MAJ la revise." };
+  if (open?.length) return { status: "error", message: M.applicationOpen };
 
   if (d.requested_plan_id) {
     const { data: plan } = await supabase.from("plans").select("id, holder_type").eq("id", d.requested_plan_id).eq("is_active", true).maybeSingle();
-    if (!plan) return { status: "error", message: "El plan seleccionado no está disponible.", errors: { requested_plan_id: "Plan no disponible" } };
+    if (!plan) return { status: "error", message: M.planUnavailable, errors: { requested_plan_id: M.planUnavailableShort } };
     const expected = d.applicant_type === "agencia" ? "organizacion" : "individual";
     if (plan.holder_type !== expected) {
-      return { status: "error", message: "El plan no corresponde al tipo de solicitante.", errors: { requested_plan_id: d.applicant_type === "agencia" ? "Elija un plan para agencias" : "Elija un plan individual" } };
+      return { status: "error", message: M.planMismatch, errors: { requested_plan_id: d.applicant_type === "agencia" ? M.pickAgencyPlan : M.pickIndividualPlan } };
     }
   }
 
   const termsVersion = String((await getSiteSettings())["legal.documents_version"] ?? "");
-  if (!termsVersion) return { status: "error", message: "No se pudo determinar la versión de las condiciones. Intente más tarde." };
+  if (!termsVersion) return { status: "error", message: M.termsVersion };
 
   const prof = await supabase
     .from("profiles")
@@ -122,5 +132,5 @@ export async function submitApplication(_prev: ActionState, fd: FormData): Promi
     .single();
   if (error || !data) return { status: "error", message: dbErrorMessage(error) };
   revalidatePath("/panel/publicar");
-  return { status: "ok", id: data.id, message: "Solicitud enviada. El equipo de MAJ la revisará y le avisará por correo y en su panel." };
+  return { status: "ok", id: data.id, message: M.applicationOk };
 }

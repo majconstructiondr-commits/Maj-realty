@@ -3,15 +3,19 @@ import Link from "next/link";
 import { RentCollectionForm } from "./RentCollectionForm";
 import "@/components/listing-editor/editor.css";
 import { isStaffRole, requireUser } from "@/lib/auth";
-import { CHANNELS, OPERATIONS, PROPERTY_TYPES, REQUEST_KINDS, REQUEST_STATUSES, STATUSES, type ListingStatus } from "@/lib/catalog/definitions";
+import type { CHANNELS, PROPERTY_TYPES, REQUEST_KINDS, REQUEST_STATUSES, ListingStatus } from "@/lib/catalog/definitions";
 import { formatDate, formatNumber } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { canCreateListings, canEditListing, getSellerContext, memberCan } from "@/lib/listing-editor/server";
 import { QuickActions } from "@/components/listing-editor/QuickActions";
 import { StatusBadge } from "@/components/listing-editor/StatusBadge";
 import { listingHref } from "@/components/property/ListingCard";
+import { fmt } from "@/i18n";
+import { getI18n } from "@/i18n/server";
 
-export const metadata: Metadata = { title: "Mis publicaciones", robots: { index: false, follow: false } };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).d.editor.list.meta, robots: { index: false, follow: false } };
+}
 
 type Row = {
   id: string; code: string; title: string; status: ListingStatus; operation: "venta" | "renta" | "ambas"; property_type: keyof typeof PROPERTY_TYPES;
@@ -24,10 +28,11 @@ type Lead = {
   contact_email: string | null; preferred_channel: keyof typeof CHANNELS; property_ref: string | null; message: string | null; created_at: string;
 };
 
-const FILTERS: { key: string; label: string; statuses: ListingStatus[] | null }[] = [
-  { key: "activas", label: "Activas y en curso", statuses: ["borrador", "en_revision", "publicado", "pausado", "reservado", "rechazado"] },
-  { key: "cerradas", label: "Vendidas, rentadas y archivadas", statuses: ["vendido", "rentado", "archivado"] },
-  { key: "todas", label: "Todas", statuses: null },
+// Las etiquetas de cada filtro están en el diccionario (editor.list.filters).
+const FILTERS: { key: string; statuses: ListingStatus[] | null }[] = [
+  { key: "activas", statuses: ["borrador", "en_revision", "publicado", "pausado", "reservado", "rechazado"] },
+  { key: "cerradas", statuses: ["vendido", "rentado", "archivado"] },
+  { key: "todas", statuses: null },
 ];
 
 export default async function PublicationsPage(props: PageProps<"/panel/publicaciones">) {
@@ -36,9 +41,11 @@ export default async function PublicationsPage(props: PageProps<"/panel/publicac
   const ctx = (await getSellerContext())!;
   const me = ctx.user.id;
   const supabase = await createClient();
+  const { d } = await getI18n();
+  const t = d.editor.list;
   const filter = FILTERS.find((f) => f.key === sp.ver) ?? FILTERS[0];
   const viewAllOrgs = ctx.memberships.filter((m) => memberCan(m, "view_all")).map((m) => m.organization_id);
-  const orgNames = new Map(ctx.memberships.map((m) => [m.organization_id, m.organization?.name ?? "Organización"]));
+  const orgNames = new Map(ctx.memberships.map((m) => [m.organization_id, m.organization?.name ?? t.organization]));
 
   let q = supabase
     .from("properties")
@@ -82,44 +89,44 @@ export default async function PublicationsPage(props: PageProps<"/panel/publicac
   return (
     <div className="section-sm">
       <div className="row-between">
-        <h1 style={{ margin: 0 }}>Mis publicaciones</h1>
-        {canCreate ? <Link className="btn btn-primary" href="/panel/publicaciones/nueva">+ Nueva publicación</Link> : null}
+        <h1 style={{ margin: 0 }}>{t.title}</h1>
+        {canCreate ? <Link className="btn btn-primary" href="/panel/publicaciones/nueva">{t.new}</Link> : null}
       </div>
 
       {enviado ? (
         <p className="alert alert-success" role="status" style={{ marginTop: 12 }}>
-          La publicación {enviado} se envió a revisión. MAJ la revisará antes de mostrarla al público.
+          {fmt(t.sent, { code: enviado })}
         </p>
       ) : null}
       {!canCreate ? (
         <div className="alert alert-info" style={{ marginTop: 12 }}>
-          Su cuenta aún no está habilitada para publicar. <Link href="/panel/publicar">Solicite su licencia de publicación</Link>.
+          {d.editor.newDraft.notEnabled} <Link href="/panel/publicar">{d.editor.newDraft.requestLicense}</Link>.
         </div>
       ) : isStaffRole(ctx.user) ? (
         <p className="small muted" style={{ marginTop: 8 }}>
-          Como personal de MAJ, lo que publique a su nombre es publicación de MAJ y no necesita licencia.
+          {t.staff}
         </p>
       ) : !activeLicenses.length ? (
         <p className="alert alert-warning small" style={{ marginTop: 12 }}>
-          No tiene una licencia de publicación activa: puede preparar borradores, pero para enviarlos a revisión necesita una. <Link href="/panel/licencia">Ver licencia</Link>
+          {t.noLicense} <Link href="/panel/licencia">{t.viewLicense}</Link>
         </p>
       ) : (
         <p className="small muted" style={{ marginTop: 8 }}>
-          Licencia activa: {activeLicenses.map((l) => `${l.code} (vence el ${formatDate(l.ends_at)})`).join(", ")}. <Link href="/panel/licencia">Ver cupos</Link>
+          {fmt(t.activeLicense, { list: activeLicenses.map((l) => fmt(t.licenseItem, { code: l.code, date: formatDate(l.ends_at) })).join(", ") })} <Link href="/panel/licencia">{t.viewQuotas}</Link>
         </p>
       )}
 
-      <nav aria-label="Filtrar publicaciones" className="row" style={{ margin: "14px 0" }}>
+      <nav aria-label={t.filterAria} className="row" style={{ margin: "14px 0" }}>
         {FILTERS.map((f) => (
-          <Link key={f.key} className="tab" href={`/panel/publicaciones?ver=${f.key}`} aria-current={f.key === filter.key ? "true" : undefined}>{f.label}</Link>
+          <Link key={f.key} className="tab" href={`/panel/publicaciones?ver=${f.key}`} aria-current={f.key === filter.key ? "true" : undefined}>{t.filters[f.key]}</Link>
         ))}
       </nav>
 
-      {error ? <p className="alert alert-error">No se pudieron cargar sus publicaciones. Intente de nuevo.</p> : null}
+      {error ? <p className="alert alert-error">{t.error}</p> : null}
       {!rows.length && !error ? (
         <div className="card empty">
-          <p>No hay publicaciones en esta vista.</p>
-          {canCreate ? <Link className="btn btn-primary" href="/panel/publicaciones/nueva">Crear mi primera publicación</Link> : null}
+          <p>{t.empty}</p>
+          {canCreate ? <Link className="btn btn-primary" href="/panel/publicaciones/nueva">{t.createFirst}</Link> : null}
         </div>
       ) : null}
 
@@ -132,31 +139,31 @@ export default async function PublicationsPage(props: PageProps<"/panel/publicac
               <div className="row-between" style={{ alignItems: "flex-start" }}>
                 <div style={{ minWidth: 0 }}>
                   <span className="xs muted">
-                    {r.code} · {PROPERTY_TYPES[r.property_type]} · {OPERATIONS[r.operation]}
-                    {r.organization_id ? ` · ${orgNames.get(r.organization_id) ?? "Organización"}` : ""}
-                    {r.owner_user_id !== me ? " · de otro miembro" : ""}
+                    {r.code} · {d.labels.propertyTypes[r.property_type]} · {d.labels.operations[r.operation]}
+                    {r.organization_id ? ` · ${orgNames.get(r.organization_id) ?? t.organization}` : ""}
+                    {r.owner_user_id !== me ? t.otherMember : ""}
                   </span>
                   <h2 style={{ fontSize: "1.1rem", margin: "2px 0", fontFamily: "var(--font-sans)", overflowWrap: "anywhere" }}>{r.title}</h2>
-                  <span className="small muted">{[r.sector, r.municipality, r.province].filter(Boolean).join(", ") || "Ubicación sin indicar"}</span>
+                  <span className="small muted">{[r.sector, r.municipality, r.province].filter(Boolean).join(", ") || t.noLocation}</span>
                 </div>
                 <div className="row" style={{ gap: 6 }}>
                   <StatusBadge status={r.status} />
-                  {pending.has(r.id) ? <span className="badge badge-warning">Cambio en revisión</span> : null}
+                  {pending.has(r.id) ? <span className="badge badge-warning">{t.changeInReview}</span> : null}
                 </div>
               </div>
               {r.status === "rechazado" && r.rejection_reason ? (
-                <p className="alert alert-error small" style={{ margin: 0 }}><strong>Motivo del rechazo:</strong> {r.rejection_reason}</p>
+                <p className="alert alert-error small" style={{ margin: 0 }}><strong>{t.rejection}</strong> {r.rejection_reason}</p>
               ) : null}
               {r.status === "pausado" && r.pause_reason ? (
-                <p className="alert alert-warning small" style={{ margin: 0 }}><strong>Pausada:</strong> {r.pause_reason}</p>
+                <p className="alert alert-warning small" style={{ margin: 0 }}><strong>{t.paused}</strong> {r.pause_reason}</p>
               ) : null}
               <div className="le-stats">
-                <span>Vistas: <strong>{formatNumber(s?.vistas ?? 0)}</strong></span>
-                <span>Clics en WhatsApp: <strong>{formatNumber(s?.clics_whatsapp ?? 0)}</strong></span>
-                <span>Compartidos: <strong>{formatNumber(s?.compartidos ?? 0)}</strong></span>
-                <span>Actualizada: {formatDate(r.updated_at)}</span>
+                <span>{t.views} <strong>{formatNumber(s?.vistas ?? 0)}</strong></span>
+                <span>{t.whatsappClicks} <strong>{formatNumber(s?.clics_whatsapp ?? 0)}</strong></span>
+                <span>{t.shares} <strong>{formatNumber(s?.compartidos ?? 0)}</strong></span>
+                <span>{fmt(t.updated, { date: formatDate(r.updated_at) })}</span>
                 {r.status === "publicado" || r.status === "reservado" ? (
-                  <Link href={listingHref(r)}>Ver ficha pública</Link>
+                  <Link href={listingHref(r)}>{t.publicPage}</Link>
                 ) : null}
               </div>
               <QuickActions
@@ -171,11 +178,11 @@ export default async function PublicationsPage(props: PageProps<"/panel/publicac
               {rentIds.includes(r.id) ? (
                 rentStatus.has(r.id) ? (
                   <p className="small" style={{ margin: 0 }}>
-                    <strong>Cobro de renta por MAJ:</strong> {rentStatus.get(r.id) === "activo" ? <>activo · <Link href="/panel/administracion">ver cobros</Link></> : "solicitud en revisión por MAJ"}
+                    <strong>{t.rentByMaj}</strong> {rentStatus.get(r.id) === "activo" ? <>{t.rentActive} · <Link href="/panel/administracion">{t.viewCharges}</Link></> : t.rentInReview}
                   </p>
                 ) : (
                   <details>
-                    <summary className="small"><strong>Cobro de renta por MAJ ({feePercent}%)</strong></summary>
+                    <summary className="small"><strong>{fmt(t.rentOffer, { pct: feePercent })}</strong></summary>
                     <RentCollectionForm propertyId={r.id} feePercent={feePercent} today={today} />
                   </details>
                 )
@@ -185,35 +192,35 @@ export default async function PublicationsPage(props: PageProps<"/panel/publicac
         })}
       </ul>
       <p className="xs muted" style={{ marginTop: 10 }}>
-        Las vistas y los clics en WhatsApp son estadísticas de interés: no son contactos confirmados ni ventas. Una vista se cuenta una vez por visitante y día.
+        {t.statsNote}
       </p>
 
       <section aria-labelledby="leads-title" style={{ marginTop: 28 }}>
-        <h2 id="leads-title">Interesados asignados a usted</h2>
-        <p className="small muted">Solicitudes que MAJ le asignó para seguimiento. Use estos datos solo para atender la solicitud.</p>
+        <h2 id="leads-title">{t.leads}</h2>
+        <p className="small muted">{t.leadsIntro}</p>
         {leads.length ? (
           <div className="table-wrap">
             <table className="table">
-              <caption className="sr-only">Interesados asignados</caption>
+              <caption className="sr-only">{t.leadsCaption}</caption>
               <thead>
-                <tr><th scope="col">Solicitud</th><th scope="col">Contacto</th><th scope="col">Inmueble</th><th scope="col">Estado</th><th scope="col">Fecha</th></tr>
+                <tr><th scope="col">{t.request}</th><th scope="col">{t.contact}</th><th scope="col">{t.property}</th><th scope="col">{t.status}</th><th scope="col">{t.date}</th></tr>
               </thead>
               <tbody>
                 {leads.map((l) => (
                   <tr key={l.id}>
                     <td>
                       <strong>{l.number}</strong>
-                      <span className="small" style={{ display: "block" }}>{REQUEST_KINDS[l.kind] ?? l.kind}</span>
+                      <span className="small" style={{ display: "block" }}>{d.status.requestKinds[l.kind] ?? l.kind}</span>
                       {l.message ? <span className="xs muted" style={{ display: "block", maxWidth: 320, whiteSpace: "pre-line" }}>{l.message.slice(0, 280)}{l.message.length > 280 ? "…" : ""}</span> : null}
                     </td>
                     <td className="small">
                       {l.contact_name}
                       {l.contact_phone ? <span style={{ display: "block" }}><a href={`tel:${l.contact_phone.replace(/[^\d+]/g, "")}`}>{l.contact_phone}</a></span> : null}
                       {l.contact_email ? <span style={{ display: "block" }}><a href={`mailto:${l.contact_email}`}>{l.contact_email}</a></span> : null}
-                      <span className="xs muted">Prefiere: {CHANNELS[l.preferred_channel] ?? l.preferred_channel}</span>
+                      <span className="xs muted">{fmt(t.prefers, { channel: d.labels.channels[l.preferred_channel] ?? l.preferred_channel })}</span>
                     </td>
                     <td className="small">{l.property_ref ?? "—"}</td>
-                    <td><span className="badge">{REQUEST_STATUSES[l.status] ?? l.status}</span></td>
+                    <td><span className="badge">{d.status.requestStatuses[l.status] ?? l.status}</span></td>
                     <td className="small">{formatDate(l.created_at, true)}</td>
                   </tr>
                 ))}
@@ -221,10 +228,10 @@ export default async function PublicationsPage(props: PageProps<"/panel/publicac
             </table>
           </div>
         ) : (
-          <p className="card empty">Aún no tiene interesados asignados.</p>
+          <p className="card empty">{t.noLeads}</p>
         )}
       </section>
-      <p className="xs muted" style={{ marginTop: 16 }}>Estados: {Object.values(STATUSES).join(" · ")}.</p>
+      <p className="xs muted" style={{ marginTop: 16 }}>{fmt(t.statuses, { list: Object.values(d.status.listing).join(" · ") })}</p>
     </div>
   );
 }

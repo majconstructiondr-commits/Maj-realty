@@ -6,6 +6,8 @@ import { hrefWith, ilikeTerm, oneOf, pageOf, sortOf, str, type SP } from "@/lib/
 import { labelFor, staffCtx, userLabels } from "@/lib/admin/server";
 import { formatDate, formatMoney, type Currency } from "@/lib/format";
 import { createMajListing } from "./actions";
+import { getI18n } from "@/i18n/server";
+import { env } from "@/lib/env";
 
 const BASE = "/admin/inmuebles";
 const SORTS = ["updated_at", "created_at", "submitted_at", "code", "title"] as const;
@@ -20,6 +22,9 @@ type Row = {
 export default async function AdminProperties(props: PageProps<"/admin/inmuebles">) {
   const sp = (await props.searchParams) as SP;
   const { supabase } = await staffCtx(BASE);
+  const i = (await getI18n()).d;
+  const c = i.admin.common;
+  const t = i.admin.listings;
   const status = oneOf(sp, "status", Object.keys(STATUSES));
   const operation = oneOf(sp, "operation", Object.keys(OPERATIONS));
   const type = oneOf(sp, "property_type", Object.keys(PROPERTY_TYPES));
@@ -59,53 +64,59 @@ export default async function AdminProperties(props: PageProps<"/admin/inmuebles
 
   return (
     <>
-      <PageHeader title="Inmuebles y revisión">
-        <Link className="btn btn-primary btn-sm" href="/panel/publicaciones/nueva">Nuevo inmueble</Link>
-        <Link className="btn btn-outline btn-sm" href="/admin/inmuebles/importar">Importar desde Excel</Link>
-        <a className="btn btn-ghost btn-sm" href={exportHref}>Exportar CSV</a>
+      <PageHeader title={t.title}>
+        <Link className="btn btn-primary btn-sm" href="/panel/publicaciones/nueva">{t.new}</Link>
+        <Link className="btn btn-outline btn-sm" href="/admin/inmuebles/importar">{t.import}</Link>
+        <a className="btn btn-ghost btn-sm" href={exportHref}>{c.exportCsv}</a>
       </PageHeader>
 
       <details className="card card-body" style={{ marginBottom: 16 }}>
-        <summary><strong>Crear publicación propia de MAJ</strong></summary>
-        <p className="small muted">Se crea como borrador a nombre de su usuario, marcada como publicación de MAJ (no consume licencia). Luego complete la ficha en el editor.</p>
-        <ActionForm action={createMajListing} submit="Crear borrador y abrir editor">
+        <summary><strong>{t.feedTitle}</strong></summary>
+        <p className="small muted">{t.feedNote}</p>
+        <input className="input" readOnly value={`${env.siteUrl}/feeds/facebook.xml`} aria-label={t.feedLabel} />
+      </details>
+
+      <details className="card card-body" style={{ marginBottom: 16 }}>
+        <summary><strong>{t.createMaj}</strong></summary>
+        <p className="small muted">{t.createMajNote}</p>
+        <ActionForm action={createMajListing} submit={t.createSubmit}>
           <div className="form-grid">
-            <div className="field"><label htmlFor="n-title" className="required">Título</label><input id="n-title" name="title" className="input" minLength={5} maxLength={140} required /></div>
-            <div className="field"><label htmlFor="n-op" className="required">Operación</label><select id="n-op" name="operation" className="select" required><Options map={OPERATIONS} /></select></div>
-            <div className="field"><label htmlFor="n-type" className="required">Tipo</label><select id="n-type" name="property_type" className="select" required><Options map={PROPERTY_TYPES} /></select></div>
+            <div className="field"><label htmlFor="n-title" className="required">{c.titleField}</label><input id="n-title" name="title" className="input" minLength={5} maxLength={140} required /></div>
+            <div className="field"><label htmlFor="n-op" className="required">{c.operation}</label><select id="n-op" name="operation" className="select" required><Options map={i.labels.operations} /></select></div>
+            <div className="field"><label htmlFor="n-type" className="required">{c.kind}</label><select id="n-type" name="property_type" className="select" required><Options map={i.labels.propertyTypes} /></select></div>
           </div>
         </ActionForm>
       </details>
 
       <form method="get" className="card card-body form-grid" style={{ marginBottom: 16 }} role="search">
-        <div className="field"><label htmlFor="f-q">Buscar</label><input id="f-q" name="q" className="input" defaultValue={str(sp, "q")} placeholder="Código, título, sector…" /></div>
-        <div className="field"><label htmlFor="f-status">Estado</label><select id="f-status" name="status" className="select" defaultValue={status}><Options map={STATUSES} empty="Todos" /></select></div>
-        <div className="field"><label htmlFor="f-op">Operación</label><select id="f-op" name="operation" className="select" defaultValue={operation}><Options map={OPERATIONS} empty="Todas" /></select></div>
-        <div className="field"><label htmlFor="f-type">Tipo</label><select id="f-type" name="property_type" className="select" defaultValue={type}><Options map={PROPERTY_TYPES} empty="Todos" /></select></div>
-        <div className="field"><label htmlFor="f-maj">Origen</label><select id="f-maj" name="maj" className="select" defaultValue={maj}><option value="">Todos</option><option value="1">Publicaciones MAJ</option><option value="0">Terceros</option></select></div>
+        <div className="field"><label htmlFor="f-q">{c.search}</label><input id="f-q" name="q" className="input" defaultValue={str(sp, "q")} placeholder={t.searchPlaceholder} /></div>
+        <div className="field"><label htmlFor="f-status">{c.status}</label><select id="f-status" name="status" className="select" defaultValue={status}><Options map={i.status.listing} empty={c.all} /></select></div>
+        <div className="field"><label htmlFor="f-op">{c.operation}</label><select id="f-op" name="operation" className="select" defaultValue={operation}><Options map={i.labels.operations} empty={c.allF} /></select></div>
+        <div className="field"><label htmlFor="f-type">{c.kind}</label><select id="f-type" name="property_type" className="select" defaultValue={type}><Options map={i.labels.propertyTypes} empty={c.all} /></select></div>
+        <div className="field"><label htmlFor="f-maj">{t.origin}</label><select id="f-maj" name="maj" className="select" defaultValue={maj}><option value="">{c.all}</option><option value="1">{t.majListings}</option><option value="0">{t.thirdParty}</option></select></div>
         <div className="field">
-          <span className="label">Pendientes</span>
-          <label className="check"><input type="checkbox" name="cambios" value="1" defaultChecked={cambios} /> Con cambios por revisar</label>
-          <label className="check"><input type="checkbox" name="multimedia" value="1" defaultChecked={multimedia} /> Con multimedia por aprobar</label>
+          <span className="label">{t.pendingLabel}</span>
+          <label className="check"><input type="checkbox" name="cambios" value="1" defaultChecked={cambios} /> {t.withChanges}</label>
+          <label className="check"><input type="checkbox" name="multimedia" value="1" defaultChecked={multimedia} /> {t.withMedia}</label>
         </div>
         <input type="hidden" name="orden" value={sort.raw} />
-        <div className="row"><button className="btn btn-primary" type="submit">Filtrar</button><Link href={BASE} className="btn btn-ghost">Limpiar</Link></div>
+        <div className="row"><button className="btn btn-primary" type="submit">{c.filter}</button><Link href={BASE} className="btn btn-ghost">{c.clear}</Link></div>
       </form>
 
-      {error && <p className="alert alert-error">No se pudo cargar la lista.</p>}
-      {rows.length === 0 ? <Empty>No hay inmuebles con esos filtros.</Empty> : (
+      {error && <p className="alert alert-error">{c.loadError}</p>}
+      {rows.length === 0 ? <Empty>{t.empty}</Empty> : (
         <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
-                <SortTh base={BASE} sp={sp} column="code" current={sort.raw}>Código</SortTh>
-                <SortTh base={BASE} sp={sp} column="title" current={sort.raw}>Título</SortTh>
-                <th>Estado</th>
-                <th>Ubicación</th>
-                <th>Precio</th>
-                <th>Titular</th>
-                <SortTh base={BASE} sp={sp} column="submitted_at" current={sort.raw}>Enviado</SortTh>
-                <SortTh base={BASE} sp={sp} column="updated_at" current={sort.raw}>Actualizado</SortTh>
+                <SortTh base={BASE} sp={sp} column="code" current={sort.raw}>{c.code}</SortTh>
+                <SortTh base={BASE} sp={sp} column="title" current={sort.raw}>{c.titleField}</SortTh>
+                <th>{c.status}</th>
+                <th>{c.location}</th>
+                <th>{c.price}</th>
+                <th>{t.owner}</th>
+                <SortTh base={BASE} sp={sp} column="submitted_at" current={sort.raw}>{t.submitted}</SortTh>
+                <SortTh base={BASE} sp={sp} column="updated_at" current={sort.raw}>{c.updated}</SortTh>
               </tr>
             </thead>
             <tbody>
@@ -114,18 +125,18 @@ export default async function AdminProperties(props: PageProps<"/admin/inmuebles
                   <td><Link href={`${BASE}/${r.id}`}><strong>{r.code}</strong></Link></td>
                   <td>
                     {r.title}
-                    <div className="xs muted">{labelOf(OPERATIONS, r.operation)} · {labelOf(PROPERTY_TYPES, r.property_type)}</div>
+                    <div className="xs muted">{labelOf(i.labels.operations, r.operation)} · {labelOf(i.labels.propertyTypes, r.property_type)}</div>
                     <div className="row" style={{ gap: 4 }}>
                       {r.is_maj_listing && <span className="badge badge-navy">MAJ</span>}
                       {r.is_demo && <span className="badge badge-demo">Demo</span>}
-                      {r.documents_reviewed_at && <span className="badge badge-success">Docs revisados</span>}
+                      {r.documents_reviewed_at && <span className="badge badge-success">{t.docsReviewed}</span>}
                     </div>
                   </td>
-                  <td><Badge value={r.status} map={STATUSES} /></td>
+                  <td><Badge value={r.status} map={i.status.listing} /></td>
                   <td className="small">{[r.sector, r.municipality, r.province].filter(Boolean).join(", ") || "—"}</td>
                   <td className="small">
                     {r.property_prices.length === 0 ? "—" : r.property_prices.map((p) => (
-                      <div key={p.operation}>{p.operation === "venta" ? "Venta" : "Renta"}: {formatMoney(p.amount, p.currency)}</div>
+                      <div key={p.operation}>{labelOf(i.labels.operations, p.operation)}: {formatMoney(p.amount, p.currency)}</div>
                     ))}
                   </td>
                   <td className="small">{labelFor(owners, r.owner_user_id)}</td>

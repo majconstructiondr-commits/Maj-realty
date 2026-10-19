@@ -31,7 +31,8 @@ export const ALLOWED_PRIVATE = [
   "cadastral_designation", "survey_status", "legal_status_certificate_date", "declared_liens", "tax_notes", "contract_notes",
 ];
 
-export const FIELD_LABELS: Record<string, string> = {
+// Nombres de campo propios de este módulo (los numéricos y de espacios salen del catálogo).
+export const BASE_FIELD_LABELS: Record<string, string> = {
   title: "Título", operation: "Operación", property_type: "Tipo", description: "Descripción", condition: "Condición",
   province: "Provincia", municipality: "Municipio", sector: "Sector", exact_address_public: "Dirección exacta pública",
   public_address: "Dirección pública", roof_use_detail: "Uso del techo", na_fields: "Campos que no aplican",
@@ -49,15 +50,40 @@ export const FIELD_LABELS: Record<string, string> = {
   maintenance_currency: "Moneda del mantenimiento", maintenance_included: "Mantenimiento incluido", additional_costs: "Costos adicionales",
   rent_period: "Período de renta", deposit_amount: "Depósito", deposit_months: "Meses de depósito", advance_months: "Meses de adelanto",
   min_term_months: "Plazo mínimo (meses)", delivery_conditions: "Condiciones de entrega",
+};
+
+export const FIELD_LABELS: Record<string, string> = {
+  ...BASE_FIELD_LABELS,
   ...Object.fromEntries(Object.entries(NUMERIC_FIELDS).map(([k, v]) => [k, v.label])),
   ...SPACE_FIELDS,
 };
 
-const VALUE_LABELS: Record<string, Record<string, string>> = {
-  operation: OPERATIONS, property_type: PROPERTY_TYPES, condition: CONDITIONS,
-  ...Object.fromEntries(Object.keys(SPACE_FIELDS).map((k) => [k, TRI])),
-  maintenance_included: TRI,
+type L = Record<string, string>;
+/** Textos del resumen de cambios; por defecto en español (el panel pasa los del idioma activo). */
+export type DiffText = {
+  fields: L; numericFields: L; spaceFields: L; features: L;
+  operations: L; propertyTypes: L; conditions: L; tri: L;
+  yes: string; no: string; removed: string; price: string; feature: string;
 };
+export const DIFF_TEXT_ES: DiffText = {
+  fields: BASE_FIELD_LABELS,
+  numericFields: Object.fromEntries(Object.entries(NUMERIC_FIELDS).map(([k, v]) => [k, v.label])),
+  spaceFields: SPACE_FIELDS,
+  features: Object.fromEntries(Object.entries(FEATURES).map(([k, v]) => [k, v.label])),
+  operations: OPERATIONS, propertyTypes: PROPERTY_TYPES, conditions: CONDITIONS, tri: TRI,
+  yes: "Sí", no: "No", removed: "Se elimina", price: "precio", feature: "Característica",
+};
+
+/** Nombre legible de un campo en el idioma de `text`. */
+export function fieldLabel(field: string, text: DiffText = DIFF_TEXT_ES) {
+  return text.fields[field] ?? text.numericFields[field] ?? text.spaceFields[field] ?? field;
+}
+
+const valueLabels = (t: DiffText): Record<string, L> => ({
+  operation: t.operations, property_type: t.propertyTypes, condition: t.conditions,
+  ...Object.fromEntries(Object.keys(SPACE_FIELDS).map((k) => [k, t.tri])),
+  maintenance_included: t.tri,
+});
 
 const PRICE_FIELDS = [
   "amount", "currency", "negotiable", "maintenance_amount", "maintenance_currency", "maintenance_included", "additional_costs",
@@ -67,13 +93,13 @@ const PRICE_FIELDS = [
 // Valores por defecto que review_property_change usa al reemplazar un precio.
 const PRICE_DEFAULTS: Record<string, unknown> = { negotiable: false, maintenance_included: "desconocido" };
 
-export function displayValue(field: string, v: unknown): string {
+export function displayValue(field: string, v: unknown, text: DiffText = DIFF_TEXT_ES): string {
   if (v === null || v === undefined || v === "") return "—";
-  if (typeof v === "boolean") return v ? "Sí" : "No";
-  if (Array.isArray(v)) return v.length ? v.map((x) => FIELD_LABELS[String(x)] ?? String(x)).join(", ") : "—";
+  if (typeof v === "boolean") return v ? text.yes : text.no;
+  if (Array.isArray(v)) return v.length ? v.map((x) => fieldLabel(String(x), text)).join(", ") : "—";
   if (typeof v === "object") return JSON.stringify(v);
   const s = String(v);
-  return VALUE_LABELS[field]?.[s] ?? s;
+  return valueLabels(text)[field]?.[s] ?? s;
 }
 
 function same(a: unknown, b: unknown) {
@@ -86,16 +112,16 @@ function same(a: unknown, b: unknown) {
   return JSON.stringify(na) === JSON.stringify(nb);
 }
 
-function featureRows(before: unknown, after: unknown): DiffRow[] {
+function featureRows(before: unknown, after: unknown, text: DiffText): DiffRow[] {
   const b = (before && typeof before === "object" ? before : {}) as Record<string, { v?: string; d?: string }>;
   const a = (after && typeof after === "object" ? after : {}) as Record<string, { v?: string; d?: string }>;
   const keys = [...new Set([...Object.keys(b), ...Object.keys(a)])].sort();
   const show = (x?: { v?: string; d?: string }) =>
-    x ? `${TRI[x.v as keyof typeof TRI] ?? x.v ?? "—"}${x.d ? ` (${x.d})` : ""}` : "—";
+    x ? `${(x.v && text.tri[x.v]) ?? x.v ?? "—"}${x.d ? ` (${x.d})` : ""}` : "—";
   return keys.map((k) => ({
     section: "Inmueble" as const,
     field: `features.${k}`,
-    label: `Característica: ${FEATURES[k]?.label ?? k}`,
+    label: `${text.feature}: ${text.features[k] ?? k}`,
     before: show(b[k]),
     after: show(a[k]),
     changed: show(b[k]) !== show(a[k]),
@@ -104,19 +130,21 @@ function featureRows(before: unknown, after: unknown): DiffRow[] {
 }
 
 /** Construye las filas de diferencias. Por defecto devuelve solo las que cambian. */
-export function buildChangeDiff(changes: ChangeSet, current: Current, opts: { onlyChanged?: boolean } = {}): DiffRow[] {
+export function buildChangeDiff(changes: ChangeSet, current: Current, opts: { onlyChanged?: boolean; text?: DiffText } = {}): DiffRow[] {
   const onlyChanged = opts.onlyChanged ?? true;
+  const text = opts.text ?? DIFF_TEXT_ES;
+  const show = (field: string, v: unknown) => displayValue(field, v, text);
   const rows: DiffRow[] = [];
 
   for (const [field, after] of Object.entries(changes.property ?? {})) {
     if (field === "features") {
-      rows.push(...featureRows(current.property.features, after));
+      rows.push(...featureRows(current.property.features, after, text));
       continue;
     }
     const before = current.property[field];
     rows.push({
-      section: "Inmueble", field, label: FIELD_LABELS[field] ?? field,
-      before: displayValue(field, before), after: displayValue(field, after),
+      section: "Inmueble", field, label: fieldLabel(field, text),
+      before: show(field, before), after: show(field, after),
       changed: !same(before, after), applied: ALLOWED_PROPERTY.includes(field),
     });
   }
@@ -124,8 +152,8 @@ export function buildChangeDiff(changes: ChangeSet, current: Current, opts: { on
   for (const [field, after] of Object.entries(changes.private ?? {})) {
     const before = current.private?.[field];
     rows.push({
-      section: "Datos privados", field, label: FIELD_LABELS[field] ?? field,
-      before: displayValue(field, before), after: displayValue(field, after),
+      section: "Datos privados", field, label: fieldLabel(field, text),
+      before: show(field, before), after: show(field, after),
       changed: !same(before, after), applied: ALLOWED_PRIVATE.includes(field),
     });
   }
@@ -135,9 +163,9 @@ export function buildChangeDiff(changes: ChangeSet, current: Current, opts: { on
     for (const op of ops) {
       const b = current.prices.find((p) => p.operation === op);
       const a = changes.prices.find((p) => p.operation === op);
-      const opLabel = op === "venta" ? "Venta" : op === "renta" ? "Renta" : op;
+      const opLabel = text.operations[op] ?? op;
       if (!a) {
-        rows.push({ section: "Precios", field: `${op}`, label: `${opLabel}: precio`, before: displayValue("amount", b?.amount), after: "Se elimina", changed: true, applied: true });
+        rows.push({ section: "Precios", field: `${op}`, label: `${opLabel}: ${text.price}`, before: show("amount", b?.amount), after: text.removed, changed: true, applied: true });
         continue;
       }
       for (const f of PRICE_FIELDS) {
@@ -145,8 +173,8 @@ export function buildChangeDiff(changes: ChangeSet, current: Current, opts: { on
         const before = b?.[f];
         const after = a[f] ?? PRICE_DEFAULTS[f];
         rows.push({
-          section: "Precios", field: `${op}.${f}`, label: `${opLabel}: ${FIELD_LABELS[f] ?? f}`,
-          before: displayValue(f, before), after: displayValue(f, after), changed: !same(before, after), applied: true,
+          section: "Precios", field: `${op}.${f}`, label: `${opLabel}: ${fieldLabel(f, text)}`,
+          before: show(f, before), after: show(f, after), changed: !same(before, after), applied: true,
         });
       }
     }

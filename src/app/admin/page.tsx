@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { MoneyByCurrency, PageHeader } from "@/components/admin/Bits";
-import { REQUEST_KINDS, STATUSES, labelOf } from "@/lib/admin/labels";
+import { STATUSES, labelOf } from "@/lib/admin/labels";
 import { str, type SP } from "@/lib/admin/params";
 import { staffCtx } from "@/lib/admin/server";
 import { isoFromNow } from "@/lib/admin/time";
 import { formatDate, formatNumber, type Currency } from "@/lib/format";
+import { fmt } from "@/i18n";
+import { getI18n } from "@/i18n/server";
 
 type Totals = Partial<Record<Currency, { count: number; total: number | string }>>;
 type Dash = {
@@ -56,6 +58,8 @@ const totalsOnly = (t: Totals) => Object.fromEntries(Object.entries(t).map(([c, 
 export default async function AdminDashboard(props: PageProps<"/admin">) {
   const sp = (await props.searchParams) as SP;
   const { supabase } = await staffCtx("/admin");
+  const i = (await getI18n()).d;
+  const t = i.admin.dash;
   const days = [7, 30, 90].includes(Number(str(sp, "dias"))) ? Number(str(sp, "dias")) : 30;
   const aviso = str(sp, "aviso");
 
@@ -82,8 +86,8 @@ export default async function AdminDashboard(props: PageProps<"/admin">) {
   if (error || !data) {
     return (
       <>
-        <PageHeader title="Tablero" />
-        <p className="alert alert-error">No se pudieron cargar los indicadores. Verifique que su sesión tenga el segundo factor activo.</p>
+        <PageHeader title={t.title} />
+        <p className="alert alert-error">{t.loadError}</p>
       </>
     );
   }
@@ -92,63 +96,62 @@ export default async function AdminDashboard(props: PageProps<"/admin">) {
 
   return (
     <>
-      <PageHeader title="Tablero">
+      <PageHeader title={t.title}>
         {[7, 30, 90].map((n) => (
-          <Link key={n} href={`/admin?dias=${n}`} className={`btn btn-sm ${n === days ? "btn-primary" : "btn-ghost"}`}>{n} días</Link>
+          <Link key={n} href={`/admin?dias=${n}`} className={`btn btn-sm ${n === days ? "btn-primary" : "btn-ghost"}`}>{fmt(t.days, { n })}</Link>
         ))}
       </PageHeader>
-      {aviso === "solo-administradores" && <p className="alert alert-warning">Esa sección es solo para administradores.</p>}
+      {aviso === "solo-administradores" && <p className="alert alert-warning">{t.adminOnly}</p>}
 
       <section className="stack" aria-labelledby="pendientes">
-        <h2 id="pendientes">Pendientes de atención</h2>
+        <h2 id="pendientes">{t.pending}</h2>
         <div className="grid-4">
-          <Stat label="Inmuebles en revisión" value={ps.en_revision ?? 0} href="/admin/inmuebles?status=en_revision" />
-          <Stat label="Cambios pendientes" value={d.pending_change_requests} href="/admin/inmuebles?cambios=1" />
-          <Stat label="Multimedia por aprobar" value={d.pending_media} href="/admin/inmuebles?multimedia=1" />
-          <Stat label="Documentos por revisar" value={d.pending_documents} />
-          <Stat label="Solicitudes sin atender (+24 h)" value={d.unattended_requests} href="/admin/solicitudes?stage=nuevo&asignado=ninguno" hint="Etapa nuevo, sin responsable" />
-          <Stat label="Visitas por confirmar" value={d.visits_to_confirm} href="/admin/visitas?status=solicitada" />
-          <Stat label="Próximas visitas (7 días)" value={d.upcoming_visits} href="/admin/visitas" />
-          <Stat label="Reportes abiertos" value={d.open_property_reports + d.open_message_reports} href="/admin/reportes" hint={`${d.open_property_reports} de inmuebles · ${d.open_message_reports} de mensajes`} />
-          <Stat label={`Licencias que vencen en ${d.notice_days} días`} value={d.licenses_expiring} href="/admin/licencias?vence=1" />
-          <Stat label="Licencias pendientes" value={d.licenses_pending} href="/admin/licencias?status=pendiente" />
-          <Stat label="Pagos por revisar" value={d.payments_pending} href="/admin/licencias#pagos" />
-          <Stat label="Solicitudes de publicador" value={d.applications_pending} href="/admin/publicadores" />
+          <Stat label={t.inReview} value={ps.en_revision ?? 0} href="/admin/inmuebles?status=en_revision" />
+          <Stat label={t.changes} value={d.pending_change_requests} href="/admin/inmuebles?cambios=1" />
+          <Stat label={t.media} value={d.pending_media} href="/admin/inmuebles?multimedia=1" />
+          <Stat label={t.docs} value={d.pending_documents} />
+          <Stat label={t.unattended} value={d.unattended_requests} href="/admin/solicitudes?stage=nuevo&asignado=ninguno" hint={t.unattendedHint} />
+          <Stat label={t.toConfirm} value={d.visits_to_confirm} href="/admin/visitas?status=solicitada" />
+          <Stat label={t.upcoming7} value={d.upcoming_visits} href="/admin/visitas" />
+          <Stat label={t.openReports} value={d.open_property_reports + d.open_message_reports} href="/admin/reportes" hint={fmt(t.reportsHint, { p: d.open_property_reports, m: d.open_message_reports })} />
+          <Stat label={fmt(t.licExpiring, { n: d.notice_days })} value={d.licenses_expiring} href="/admin/licencias?vence=1" />
+          <Stat label={t.licPending} value={d.licenses_pending} href="/admin/licencias?status=pendiente" />
+          <Stat label={t.payPending} value={d.payments_pending} href="/admin/licencias#pagos" />
+          <Stat label={t.applications} value={d.applications_pending} href="/admin/publicadores" />
         </div>
       </section>
 
       <hr className="divider" />
       <section className="stack" aria-labelledby="actividad">
-        <h2 id="actividad">Actividad de los últimos {d.days} días</h2>
+        <h2 id="actividad">{fmt(t.activity, { n: d.days })}</h2>
         <p className="small muted">
-          Las vistas y los clics de WhatsApp miden interés: no son contactos confirmados ni ventas. Un cierre solo cuenta
-          cuando el personal marca un inmueble como vendido/rentado o una solicitud en etapa de cierre.
+          {t.activityNote}
         </p>
         <div className="grid-4">
-          <Stat label="Vistas de fichas" value={d.views} hint="Una por sesión y día" />
-          <Stat label="Clics en WhatsApp" value={d.whatsapp_clicks} hint="Abrir WhatsApp no confirma un mensaje" />
-          <Stat label="Consultas guardadas" value={d.saved_inquiries} href="/admin/solicitudes" hint="Solicitudes registradas con número" />
-          <Stat label="Cierres confirmados" value={d.closed_properties + d.closed_requests} hint={`${d.closed_properties} inmuebles vendidos/rentados · ${d.closed_requests} solicitudes en cierre`} />
+          <Stat label={t.views} value={d.views} hint={t.viewsHint} />
+          <Stat label={t.wa} value={d.whatsapp_clicks} hint={t.waHint} />
+          <Stat label={t.saved} value={d.saved_inquiries} href="/admin/solicitudes" hint={t.savedHint} />
+          <Stat label={t.closings} value={d.closed_properties + d.closed_requests} hint={fmt(t.closingsHint, { p: d.closed_properties, r: d.closed_requests })} />
         </div>
         <div className="grid-3">
           <div className="card stat">
-            <div className="small">Cotizaciones aceptadas ({d.days} días)</div>
-            <div className="box-value"><MoneyByCurrency totals={totalsOnly(d.quotes_accepted)} empty="Ninguna" /></div>
+            <div className="small">{fmt(t.quotesAccepted, { n: d.days })}</div>
+            <div className="box-value"><MoneyByCurrency totals={totalsOnly(d.quotes_accepted)} empty={t.noneF} /></div>
           </div>
           <div className="card stat">
-            <div className="small">Cotizaciones enviadas pendientes de respuesta</div>
-            <div className="box-value"><MoneyByCurrency totals={totalsOnly(d.quotes_open)} empty="Ninguna" /></div>
+            <div className="small">{t.quotesOpen}</div>
+            <div className="box-value"><MoneyByCurrency totals={totalsOnly(d.quotes_open)} empty={t.noneF} /></div>
           </div>
           <div className="card stat">
-            <div className="small">Pagos de licencia aprobados ({d.days} días)</div>
-            <div className="box-value"><MoneyByCurrency totals={totalsOnly(d.payments_approved)} empty="Ninguno" /></div>
+            <div className="small">{fmt(t.paymentsApproved, { n: d.days })}</div>
+            <div className="box-value"><MoneyByCurrency totals={totalsOnly(d.payments_approved)} empty={t.noneM} /></div>
           </div>
         </div>
         {Object.keys(d.management_balance ?? {}).length > 0 && (
           <div className="table-wrap">
             <table className="table">
-              <caption className="sr-only">Administración de propiedades por moneda</caption>
-              <thead><tr><th>Administración · moneda</th><th>Ingresos</th><th>Egresos</th></tr></thead>
+              <caption className="sr-only">{t.mgmtCaption}</caption>
+              <thead><tr><th>{t.mgmtCurrency}</th><th>{t.income}</th><th>{t.expenses}</th></tr></thead>
               <tbody>
                 {(Object.entries(d.management_balance) as [Currency, { ingresos: number; egresos: number }][]).map(([c, v]) => (
                   <tr key={c}>
@@ -166,14 +169,14 @@ export default async function AdminDashboard(props: PageProps<"/admin">) {
       <hr className="divider" />
       <div className="grid-2">
         <section className="stack">
-          <h2>Inmuebles por estado</h2>
+          <h2>{t.byStatus}</h2>
           <div className="table-wrap">
             <table className="table">
-              <thead><tr><th>Estado</th><th>Cantidad</th></tr></thead>
+              <thead><tr><th>{t.status}</th><th>{t.count}</th></tr></thead>
               <tbody>
                 {Object.keys(STATUSES).map((s) => (
                   <tr key={s}>
-                    <td><Link href={`/admin/inmuebles?status=${s}`}>{labelOf(STATUSES, s)}</Link></td>
+                    <td><Link href={`/admin/inmuebles?status=${s}`}>{labelOf(i.status.listing, s)}</Link></td>
                     <td>{formatNumber(ps[s] ?? 0)}</td>
                   </tr>
                 ))}
@@ -182,14 +185,14 @@ export default async function AdminDashboard(props: PageProps<"/admin">) {
           </div>
         </section>
         <section className="stack">
-          <h2>Solicitudes abiertas por tipo</h2>
+          <h2>{t.openByKind}</h2>
           <div className="table-wrap">
             <table className="table">
-              <thead><tr><th>Tipo</th><th>Abiertas</th></tr></thead>
+              <thead><tr><th>{t.kind}</th><th>{t.open}</th></tr></thead>
               <tbody>
-                {Object.entries(d.open_requests_by_kind ?? {}).length === 0 && <tr><td colSpan={2} className="muted">Sin solicitudes abiertas</td></tr>}
+                {Object.entries(d.open_requests_by_kind ?? {}).length === 0 && <tr><td colSpan={2} className="muted">{t.noOpen}</td></tr>}
                 {Object.entries(d.open_requests_by_kind ?? {}).sort((a, b) => b[1] - a[1]).map(([k, n]) => (
-                  <tr key={k}><td><Link href={`/admin/solicitudes?kind=${k}`}>{labelOf(REQUEST_KINDS, k)}</Link></td><td>{formatNumber(n)}</td></tr>
+                  <tr key={k}><td><Link href={`/admin/solicitudes?kind=${k}`}>{labelOf(i.status.requestKinds, k)}</Link></td><td>{formatNumber(n)}</td></tr>
                 ))}
               </tbody>
             </table>
@@ -200,15 +203,15 @@ export default async function AdminDashboard(props: PageProps<"/admin">) {
       <hr className="divider" />
       <div className="grid-2">
         <section className="stack">
-          <h2>Próximas visitas</h2>
-          {(visits ?? []).length === 0 ? <p className="muted">No hay visitas programadas.</p> : (
+          <h2>{t.upcoming}</h2>
+          {(visits ?? []).length === 0 ? <p className="muted">{t.noVisits}</p> : (
             <ul className="timeline">
               {(visits ?? []).map((v) => {
                 const p = v.properties as unknown as { code: string; title: string } | null;
                 return (
                   <li key={v.id as string}>
-                    <strong>{formatDate(v.starts_at as string, true)}</strong> · {v.status === "solicitada" ? "por confirmar" : "confirmada"}
-                    <div className="small">{p ? `${p.code} · ${p.title}` : "Reunión"}</div>
+                    <strong>{formatDate(v.starts_at as string, true)}</strong> · {v.status === "solicitada" ? t.pendingConfirm : t.confirmed}
+                    <div className="small">{p ? `${p.code} · ${p.title}` : t.meeting}</div>
                   </li>
                 );
               })}
@@ -216,12 +219,12 @@ export default async function AdminDashboard(props: PageProps<"/admin">) {
           )}
         </section>
         <section className="stack">
-          <h2>Solicitudes sin atender</h2>
-          {(oldest ?? []).length === 0 ? <p className="muted">Todo atendido.</p> : (
+          <h2>{t.unattendedTitle}</h2>
+          {(oldest ?? []).length === 0 ? <p className="muted">{t.allDone}</p> : (
             <ul className="timeline">
               {(oldest ?? []).map((r) => (
                 <li key={r.id as string}>
-                  <Link href={`/admin/solicitudes/${r.id}`}><strong>{r.number as string}</strong></Link> · {labelOf(REQUEST_KINDS, r.kind as string)}
+                  <Link href={`/admin/solicitudes/${r.id}`}><strong>{r.number as string}</strong></Link> · {labelOf(i.status.requestKinds, r.kind as string)}
                   <div className="small">{r.contact_name as string} · {formatDate(r.created_at as string, true)}</div>
                 </li>
               ))}

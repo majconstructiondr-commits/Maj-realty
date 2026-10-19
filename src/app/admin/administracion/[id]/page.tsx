@@ -4,9 +4,7 @@ import { ActionForm } from "@/components/admin/ActionForm";
 import { Badge, FileLink, Options, PageHeader } from "@/components/admin/Bits";
 import { ContractFields } from "@/components/admin/ContractFields";
 import { UploadForm } from "@/components/admin/UploadForm";
-import {
-  CONTRACT_STATUSES, MGMT_DOC_KINDS, MOVEMENT_KINDS, MOVEMENT_STATUSES, TICKET_PRIORITIES, TICKET_STATUSES, labelOf,
-} from "@/lib/admin/labels";
+import { MOVEMENT_STATUSES, labelOf } from "@/lib/admin/labels";
 import { isUuid, oneOf, str, type SP } from "@/lib/admin/params";
 import { getSetting, labelFor, staffCtx, userLabels } from "@/lib/admin/server";
 import { RentSection } from "@/components/admin/RentSection";
@@ -15,6 +13,8 @@ import { formatDate, formatMoney, type Currency } from "@/lib/format";
 import {
   addManagementDocument, addMovement, addTicket, attachReceipt, grantOwnerRole, reconcileMovement, updateContract, updateTicket, voidMovement,
 } from "../actions";
+import { fmt } from "@/i18n";
+import { getI18n } from "@/i18n/server";
 
 type Mov = {
   id: string; kind: string; direction: string; amount: number; currency: Currency; movement_date: string; period: string; description: string;
@@ -27,6 +27,9 @@ export default async function ContractDetail(props: PageProps<"/admin/administra
   const sp = (await props.searchParams) as SP;
   if (!isUuid(id)) notFound();
   const { supabase, isAdmin } = await staffCtx(`/admin/administracion/${id}`);
+  const i = (await getI18n()).d;
+  const S = i.status;
+  const ta = i.admin.mgmt;
   const { data: c } = await supabase.from("management_contracts").select("*").eq("id", id).maybeSingle();
   if (!c) notFound();
   const periodo = /^\d{4}-\d{2}$/.test(str(sp, "periodo")) ? str(sp, "periodo") : "";
@@ -53,29 +56,29 @@ export default async function ContractDetail(props: PageProps<"/admin/administra
 
   return (
     <>
-      <PageHeader title={c.property_label as string} back={{ href: "/admin/administracion", label: "Administración" }}>
-        <Badge value={c.status as string} map={CONTRACT_STATUSES} />
-        <a className="btn btn-ghost btn-sm" href={`/api/admin/export/movimientos?contrato=${id}${periodo ? `&periodo=${periodo}` : ""}${moneda ? `&moneda=${moneda}` : ""}`}>Exportar CSV</a>
+      <PageHeader title={c.property_label as string} back={{ href: "/admin/administracion", label: ta.back }}>
+        <Badge value={c.status as string} map={S.contract} />
+        <a className="btn btn-ghost btn-sm" href={`/api/admin/export/movimientos?contrato=${id}${periodo ? `&periodo=${periodo}` : ""}${moneda ? `&moneda=${moneda}` : ""}`}>{ta.exportCsv}</a>
       </PageHeader>
-      {rol === "ok" && <p className="alert alert-success">Contrato creado y rol “propietario” otorgado.</p>}
+      {rol === "ok" && <p className="alert alert-success">{ta.roleOk}</p>}
       <p className="small">
-        Propietario: <strong>{owner?.full_name || "—"}</strong> {owner?.email && <>· {owner.email}</>} · <Link href={`/admin/usuarios/${c.owner_user_id}`}>ver usuario</Link>
-        {hasOwnerRole ? <> · <span className="badge badge-success">Rol propietario activo</span></> : null}
+        {ta.ownerLabel} <strong>{owner?.full_name || "—"}</strong> {owner?.email && <>· {owner.email}</>} · <Link href={`/admin/usuarios/${c.owner_user_id}`}>{ta.viewUser}</Link>
+        {hasOwnerRole ? <> · <span className="badge badge-success">{ta.ownerRoleActive}</span></> : null}
       </p>
       {!hasOwnerRole && (
         <div className="alert alert-warning stack">
-          <span>El dueño aún no tiene el rol “propietario”, por lo que no puede ver su portal.</span>
+          <span>{ta.noOwnerRole}</span>
           {isAdmin ? (
-            <ActionForm action={grantOwnerRole} submit="Otorgar rol propietario" buttonClass="btn btn-primary btn-sm" inline>
+            <ActionForm action={grantOwnerRole} submit={ta.grantOwnerRole} buttonClass="btn btn-primary btn-sm" inline>
               <input type="hidden" name="contract_id" value={id} />
             </ActionForm>
-          ) : <span className="small">Un administrador debe otorgar el rol (solo los administradores gestionan roles).</span>}
+          ) : <span className="small">{ta.adminMustGrant}</span>}
         </div>
       )}
 
       <details className="card card-body">
-        <summary><strong>Datos del contrato</strong></summary>
-        <ActionForm action={updateContract} submit="Guardar contrato">
+        <summary><strong>{ta.contractData}</strong></summary>
+        <ActionForm action={updateContract} submit={ta.saveContract}>
           <input type="hidden" name="id" value={id} />
           <ContractFields today={localDay(new Date())} v={c} />
         </ActionForm>
@@ -84,11 +87,11 @@ export default async function ContractDetail(props: PageProps<"/admin/administra
       <RentSection supabase={supabase} contractId={id} feeDefault={Number((await getSetting(supabase, "rent.fee_percent")) ?? 5)} />
 
       <section className="card card-body stack" style={{ marginTop: 16 }}>
-        <h2>Estados de cuenta por período y moneda</h2>
-        {(stmts.data ?? []).length === 0 ? <p className="muted small">Sin movimientos.</p> : (
+        <h2>{ta.statements}</h2>
+        {(stmts.data ?? []).length === 0 ? <p className="muted small">{ta.noMovements}</p> : (
           <div className="table-wrap">
             <table className="table">
-              <thead><tr><th>Período</th><th>Moneda</th><th>Ingresos</th><th>Egresos</th><th>Balance</th><th>Por conciliar</th></tr></thead>
+              <thead><tr><th>{ta.period}</th><th>{ta.currency}</th><th>{ta.income}</th><th>{ta.expenses}</th><th>{ta.balance}</th><th>{ta.toReconcile}</th></tr></thead>
               <tbody>{((stmts.data ?? []) as Stmt[]).map((s) => (
                 <tr key={`${s.period}-${s.currency}`}>
                   <td><Link href={`/admin/administracion/${id}?periodo=${s.period}&moneda=${s.currency}`}>{s.period}</Link></td>
@@ -102,47 +105,47 @@ export default async function ContractDetail(props: PageProps<"/admin/administra
             </table>
           </div>
         )}
-        <p className="xs muted">Los movimientos anulados no se incluyen. DOP y USD nunca se suman entre sí.</p>
+        <p className="xs muted">{ta.statementsNote}</p>
       </section>
 
       <section className="card card-body stack" style={{ marginTop: 16 }}>
-        <h2>Movimientos</h2>
+        <h2>{ta.movements}</h2>
         <details className="box">
-          <summary><strong>+ Registrar movimiento</strong></summary>
-          <UploadForm action={addMovement} bucket="private-docs" prefix={prefix} required={false} fileLabel="Comprobante (opcional)" submit="Registrar movimiento">
+          <summary><strong>{ta.addMovementSummary}</strong></summary>
+          <UploadForm action={addMovement} bucket="private-docs" prefix={prefix} required={false} fileLabel={ta.receiptOptional} submit={ta.addMovement}>
             <input type="hidden" name="contract_id" value={id} />
             <div className="form-grid">
-              <div className="field"><label htmlFor="m-k" className="required">Tipo</label><select id="m-k" name="kind" className="select" required><Options map={MOVEMENT_KINDS} /></select></div>
-              <div className="field"><label htmlFor="m-d">Dirección (solo ajustes)</label><select id="m-d" name="direction" className="select"><option value="">Automática según tipo</option><option value="ingreso">Ingreso</option><option value="egreso">Egreso</option></select></div>
-              <div className="field"><label htmlFor="m-a" className="required">Monto</label><input id="m-a" name="amount" type="number" min="0.01" step="0.01" className="input" required /></div>
-              <div className="field"><label htmlFor="m-c" className="required">Moneda</label><select id="m-c" name="currency" className="select"><option value="DOP">DOP</option><option value="USD">USD</option></select></div>
-              <div className="field"><label htmlFor="m-dt" className="required">Fecha</label><input id="m-dt" name="movement_date" type="date" className="input" required defaultValue={localDay(new Date())} /></div>
-              <div className="field"><label htmlFor="m-p" className="required">Período (AAAA-MM)</label><input id="m-p" name="period" type="month" className="input" required defaultValue={currentPeriod()} /></div>
-              <div className="field"><label htmlFor="m-u">Unidad</label><input id="m-u" name="unit_label" className="input" maxLength={60} /></div>
+              <div className="field"><label htmlFor="m-k" className="required">{ta.kind}</label><select id="m-k" name="kind" className="select" required><Options map={S.movementKinds} /></select></div>
+              <div className="field"><label htmlFor="m-d">{ta.direction}</label><select id="m-d" name="direction" className="select"><option value="">{ta.auto}</option><option value="ingreso">{ta.incomeOne}</option><option value="egreso">{ta.expenseOne}</option></select></div>
+              <div className="field"><label htmlFor="m-a" className="required">{ta.amount}</label><input id="m-a" name="amount" type="number" min="0.01" step="0.01" className="input" required /></div>
+              <div className="field"><label htmlFor="m-c" className="required">{ta.currency}</label><select id="m-c" name="currency" className="select"><option value="DOP">DOP</option><option value="USD">USD</option></select></div>
+              <div className="field"><label htmlFor="m-dt" className="required">{ta.date}</label><input id="m-dt" name="movement_date" type="date" className="input" required defaultValue={localDay(new Date())} /></div>
+              <div className="field"><label htmlFor="m-p" className="required">{ta.periodYm}</label><input id="m-p" name="period" type="month" className="input" required defaultValue={currentPeriod()} /></div>
+              <div className="field"><label htmlFor="m-u">{ta.unit}</label><input id="m-u" name="unit_label" className="input" maxLength={60} /></div>
             </div>
-            <div className="field"><label htmlFor="m-ds" className="required">Descripción</label><input id="m-ds" name="description" className="input" required minLength={2} maxLength={500} /></div>
+            <div className="field"><label htmlFor="m-ds" className="required">{ta.description}</label><input id="m-ds" name="description" className="input" required minLength={2} maxLength={500} /></div>
           </UploadForm>
         </details>
         <form method="get" className="row">
-          <input type="month" name="periodo" className="input" defaultValue={periodo} aria-label="Período" style={{ maxWidth: 180 }} />
-          <select name="moneda" className="select" defaultValue={moneda} aria-label="Moneda" style={{ maxWidth: 120 }}><option value="">Moneda</option><option value="DOP">DOP</option><option value="USD">USD</option></select>
-          <select name="estado" className="select" defaultValue={estado} aria-label="Estado" style={{ maxWidth: 160 }}><Options map={MOVEMENT_STATUSES} empty="Estado" /></select>
-          <button className="btn btn-ghost btn-sm" type="submit">Filtrar</button>
+          <input type="month" name="periodo" className="input" defaultValue={periodo} aria-label={ta.period} style={{ maxWidth: 180 }} />
+          <select name="moneda" className="select" defaultValue={moneda} aria-label={ta.currency} style={{ maxWidth: 120 }}><option value="">{ta.currency}</option><option value="DOP">DOP</option><option value="USD">USD</option></select>
+          <select name="estado" className="select" defaultValue={estado} aria-label={ta.status} style={{ maxWidth: 160 }}><Options map={S.movementStatuses} empty={ta.status} /></select>
+          <button className="btn btn-ghost btn-sm" type="submit">{ta.filter}</button>
         </form>
-        {movRows.length === 0 ? <p className="muted small">Sin movimientos.</p> : (
+        {movRows.length === 0 ? <p className="muted small">{ta.noMovements}</p> : (
           <div className="table-wrap">
             <table className="table">
-              <thead><tr><th>Fecha</th><th>Tipo</th><th>Monto</th><th>Estado</th><th>Comprobante</th><th>Acciones</th></tr></thead>
+              <thead><tr><th>{ta.date}</th><th>{ta.kind}</th><th>{ta.amount}</th><th>{ta.status}</th><th>{ta.receipt}</th><th>{ta.actions}</th></tr></thead>
               <tbody>{movRows.map((m) => (
                 <tr key={m.id} style={m.status === "anulado" ? { opacity: 0.6 } : undefined}>
-                  <td className="small">{formatDate(m.movement_date)}<div className="xs muted">Período {m.period}</div></td>
-                  <td className="small">{labelOf(MOVEMENT_KINDS, m.kind)}<div>{m.description}</div>{m.unit_label && <div className="xs muted">Unidad {m.unit_label}</div>}</td>
+                  <td className="small">{formatDate(m.movement_date)}<div className="xs muted">{fmt(ta.periodN, { p: m.period })}</div></td>
+                  <td className="small">{labelOf(S.movementKinds, m.kind)}<div>{m.description}</div>{m.unit_label && <div className="xs muted">{fmt(ta.unitN, { u: m.unit_label })}</div>}</td>
                   <td className="small" style={{ color: m.direction === "egreso" ? "var(--danger)" : undefined }}>{m.direction === "egreso" ? "−" : "+"}{formatMoney(m.amount, m.currency, { decimals: true })}</td>
-                  <td><Badge value={m.status} map={MOVEMENT_STATUSES} />{m.void_reason && <div className="xs">{m.void_reason}</div>}</td>
+                  <td><Badge value={m.status} map={S.movementStatuses} />{m.void_reason && <div className="xs">{m.void_reason}</div>}</td>
                   <td className="small">
-                    {m.receipt_path ? <FileLink path={m.receipt_path}>Ver</FileLink> : m.status !== "anulado" ? (
-                      <details><summary>Adjuntar</summary>
-                        <UploadForm action={attachReceipt} bucket="private-docs" prefix={prefix} submit="Adjuntar">
+                    {m.receipt_path ? <FileLink path={m.receipt_path}>{ta.view}</FileLink> : m.status !== "anulado" ? (
+                      <details><summary>{ta.attach}</summary>
+                        <UploadForm action={attachReceipt} bucket="private-docs" prefix={prefix} submit={ta.attach}>
                           <input type="hidden" name="id" value={m.id} /><input type="hidden" name="contract_id" value={id} />
                         </UploadForm>
                       </details>
@@ -150,15 +153,15 @@ export default async function ContractDetail(props: PageProps<"/admin/administra
                   </td>
                   <td>
                     {m.status === "registrado" && (
-                      <ActionForm action={reconcileMovement} submit="Conciliar" buttonClass="btn btn-ghost btn-sm">
+                      <ActionForm action={reconcileMovement} submit={ta.reconcile} buttonClass="btn btn-ghost btn-sm">
                         <input type="hidden" name="id" value={m.id} /><input type="hidden" name="contract_id" value={id} />
                       </ActionForm>
                     )}
                     {m.status !== "anulado" && (
-                      <details><summary className="small">Anular</summary>
-                        <ActionForm action={voidMovement} submit="Anular movimiento" buttonClass="btn btn-danger btn-sm">
+                      <details><summary className="small">{ta.void}</summary>
+                        <ActionForm action={voidMovement} submit={ta.voidMovement} buttonClass="btn btn-danger btn-sm">
                           <input type="hidden" name="id" value={m.id} /><input type="hidden" name="contract_id" value={id} />
-                          <input name="reason" className="input" required minLength={3} maxLength={2000} placeholder="Motivo" aria-label="Motivo de anulación" />
+                          <input name="reason" className="input" required minLength={3} maxLength={2000} placeholder={ta.reason} aria-label={ta.voidReason} />
                         </ActionForm>
                       </details>
                     )}
@@ -168,56 +171,56 @@ export default async function ContractDetail(props: PageProps<"/admin/administra
             </table>
           </div>
         )}
-        <p className="xs muted">Los movimientos no se editan: se concilian o se anulan con motivo.</p>
+        <p className="xs muted">{ta.movementsNote}</p>
       </section>
 
       <div className="grid-2" style={{ marginTop: 16 }}>
         <section className="card card-body stack">
-          <h2>Mantenimiento</h2>
-          <details className="box"><summary><strong>+ Nuevo ticket</strong></summary>
-            <ActionForm action={addTicket} submit="Crear ticket" resetOnSuccess>
+          <h2>{ta.maintenance}</h2>
+          <details className="box"><summary><strong>{ta.newTicketSummary}</strong></summary>
+            <ActionForm action={addTicket} submit={ta.createTicket} resetOnSuccess>
               <input type="hidden" name="contract_id" value={id} />
-              <div className="field"><label htmlFor="t-t" className="required">Título</label><input id="t-t" name="title" className="input" required minLength={3} maxLength={160} /></div>
-              <div className="field"><label htmlFor="t-d">Descripción</label><textarea id="t-d" name="description" className="textarea" maxLength={3000} /></div>
+              <div className="field"><label htmlFor="t-t" className="required">{ta.titleField}</label><input id="t-t" name="title" className="input" required minLength={3} maxLength={160} /></div>
+              <div className="field"><label htmlFor="t-d">{ta.description}</label><textarea id="t-d" name="description" className="textarea" maxLength={3000} /></div>
               <div className="form-grid">
-                <div className="field"><label htmlFor="t-p">Prioridad</label><select id="t-p" name="priority" className="select" defaultValue="normal"><Options map={TICKET_PRIORITIES} /></select></div>
-                <div className="field"><label htmlFor="t-e">Costo estimado</label><input id="t-e" name="estimated_cost" type="number" min="0" step="0.01" className="input" /></div>
-                <div className="field"><label htmlFor="t-c">Moneda</label><select id="t-c" name="currency" className="select"><option value="">—</option><option value="DOP">DOP</option><option value="USD">USD</option></select></div>
+                <div className="field"><label htmlFor="t-p">{ta.priority}</label><select id="t-p" name="priority" className="select" defaultValue="normal"><Options map={S.ticketPriorities} /></select></div>
+                <div className="field"><label htmlFor="t-e">{ta.estimatedCost}</label><input id="t-e" name="estimated_cost" type="number" min="0" step="0.01" className="input" /></div>
+                <div className="field"><label htmlFor="t-c">{ta.currency}</label><select id="t-c" name="currency" className="select"><option value="">—</option><option value="DOP">DOP</option><option value="USD">USD</option></select></div>
               </div>
             </ActionForm>
           </details>
           {((tickets.data ?? []) as { id: string; title: string; description: string | null; priority: string; status: string; estimated_cost: number | null; currency: Currency | null; created_at: string }[]).map((t) => (
             <div key={t.id} className="box stack">
-              <div><strong>{t.title}</strong> <Badge value={t.status} map={TICKET_STATUSES} /> <Badge value={t.priority} map={TICKET_PRIORITIES} /></div>
+              <div><strong>{t.title}</strong> <Badge value={t.status} map={S.ticketStatuses} /> <Badge value={t.priority} map={S.ticketPriorities} /></div>
               {t.description && <div className="small" style={{ whiteSpace: "pre-wrap" }}>{t.description}</div>}
-              <div className="xs muted">{formatDate(t.created_at, true)}{t.estimated_cost != null && t.currency ? ` · estimado ${formatMoney(t.estimated_cost, t.currency)}` : ""}</div>
-              <ActionForm action={updateTicket} submit="Actualizar" buttonClass="btn btn-ghost btn-sm" inline>
+              <div className="xs muted">{formatDate(t.created_at, true)}{t.estimated_cost != null && t.currency ? ` · ${fmt(ta.estimated, { amount: formatMoney(t.estimated_cost, t.currency) })}` : ""}</div>
+              <ActionForm action={updateTicket} submit={ta.update} buttonClass="btn btn-ghost btn-sm" inline>
                 <input type="hidden" name="id" value={t.id} /><input type="hidden" name="contract_id" value={id} />
-                <select name="status" className="select" aria-label="Estado" defaultValue={t.status} style={{ maxWidth: 140 }}><Options map={TICKET_STATUSES} /></select>
-                <select name="priority" className="select" aria-label="Prioridad" defaultValue={t.priority} style={{ maxWidth: 120 }}><Options map={TICKET_PRIORITIES} /></select>
-                <input name="estimated_cost" type="number" min="0" step="0.01" className="input" aria-label="Costo estimado" defaultValue={t.estimated_cost ?? ""} style={{ maxWidth: 130 }} />
-                <select name="currency" className="select" aria-label="Moneda" defaultValue={t.currency ?? ""} style={{ maxWidth: 100 }}><option value="">—</option><option value="DOP">DOP</option><option value="USD">USD</option></select>
+                <select name="status" className="select" aria-label={ta.status} defaultValue={t.status} style={{ maxWidth: 140 }}><Options map={S.ticketStatuses} /></select>
+                <select name="priority" className="select" aria-label={ta.priority} defaultValue={t.priority} style={{ maxWidth: 120 }}><Options map={S.ticketPriorities} /></select>
+                <input name="estimated_cost" type="number" min="0" step="0.01" className="input" aria-label={ta.estimatedCost} defaultValue={t.estimated_cost ?? ""} style={{ maxWidth: 130 }} />
+                <select name="currency" className="select" aria-label={ta.currency} defaultValue={t.currency ?? ""} style={{ maxWidth: 100 }}><option value="">—</option><option value="DOP">DOP</option><option value="USD">USD</option></select>
               </ActionForm>
             </div>
           ))}
         </section>
         <section className="card card-body stack">
-          <h2>Documentos</h2>
-          <details className="box"><summary><strong>+ Cargar documento</strong></summary>
-            <UploadForm action={addManagementDocument} bucket="private-docs" prefix={prefix} submit="Cargar documento">
+          <h2>{ta.documents}</h2>
+          <details className="box"><summary><strong>{ta.uploadDocSummary}</strong></summary>
+            <UploadForm action={addManagementDocument} bucket="private-docs" prefix={prefix} submit={ta.uploadDoc}>
               <input type="hidden" name="contract_id" value={id} />
               <div className="form-grid">
-                <div className="field"><label htmlFor="d-k" className="required">Tipo</label><select id="d-k" name="kind" className="select"><Options map={MGMT_DOC_KINDS} /></select></div>
-                <div className="field"><label htmlFor="d-t" className="required">Título</label><input id="d-t" name="title" className="input" required maxLength={200} /></div>
-                <div className="field"><label htmlFor="d-p">Período</label><input id="d-p" name="period" type="month" className="input" /></div>
+                <div className="field"><label htmlFor="d-k" className="required">{ta.kind}</label><select id="d-k" name="kind" className="select"><Options map={S.mgmtDocKinds} /></select></div>
+                <div className="field"><label htmlFor="d-t" className="required">{ta.titleField}</label><input id="d-t" name="title" className="input" required maxLength={200} /></div>
+                <div className="field"><label htmlFor="d-p">{ta.period}</label><input id="d-p" name="period" type="month" className="input" /></div>
               </div>
             </UploadForm>
           </details>
           {((docs.data ?? []) as { id: string; kind: string; title: string; period: string | null; storage_path: string; created_at: string }[]).map((d) => (
-            <p key={d.id} className="small"><FileLink path={d.storage_path}>{d.title}</FileLink> · {labelOf(MGMT_DOC_KINDS, d.kind)}{d.period ? ` · ${d.period}` : ""} · {formatDate(d.created_at)}</p>
+            <p key={d.id} className="small"><FileLink path={d.storage_path}>{d.title}</FileLink> · {labelOf(S.mgmtDocKinds, d.kind)}{d.period ? ` · ${d.period}` : ""} · {formatDate(d.created_at)}</p>
           ))}
-          {(docs.data ?? []).length === 0 && <p className="muted small">Sin documentos.</p>}
-          <p className="xs muted">Creado por {labelFor(people, c.created_by as string)} el {formatDate(c.created_at as string)}</p>
+          {(docs.data ?? []).length === 0 && <p className="muted small">{ta.noDocs}</p>}
+          <p className="xs muted">{fmt(ta.createdBy, { who: labelFor(people, c.created_by as string), date: formatDate(c.created_at as string) })}</p>
         </section>
       </div>
     </>

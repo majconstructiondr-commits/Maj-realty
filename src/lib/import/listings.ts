@@ -2,6 +2,12 @@
 // Código puro (sin acceso a red ni base de datos) para usarlo en el navegador, el servidor y las pruebas.
 import { z } from "zod";
 import { OPERATIONS, PROPERTY_TYPES } from "@/lib/catalog/definitions";
+import { fmt } from "@/i18n/fmt";
+import { importMsgEs } from "@/i18n/sections/import-msg";
+
+// Mensajes en español (el formulario y la acción los traducen al idioma activo).
+const M = importMsgEs.msg;
+const T = importMsgEs.tpl;
 
 export const MAX_IMPORT_ROWS = 500;
 export const MAX_PHOTOS_PER_ROW = 15;
@@ -92,19 +98,19 @@ export function splitUrls(v: unknown): string[] {
   return String(v ?? "").split(/[\s,;|]+/).map((s) => s.trim()).filter(Boolean);
 }
 
-const httpsUrl = z.string().max(2000).url("Enlace no válido").refine((u) => u.startsWith("https://"), "El enlace debe empezar por https://");
-const optInt = (max: number) => z.number().int("Debe ser un número entero").min(0, "No puede ser negativo").max(max).optional();
-const optArea = z.number().min(0, "No puede ser negativo").max(1e9).optional();
-const optPrice = z.number().min(0, "No puede ser negativo").max(1e13).optional();
+const httpsUrl = z.string().max(2000).url(M.invalidUrl).refine((u) => u.startsWith("https://"), M.httpsRequired);
+const optInt = (max: number) => z.number().int(M.integer).min(0, M.negative).max(max).optional();
+const optArea = z.number().min(0, M.negative).max(1e9).optional();
+const optPrice = z.number().min(0, M.negative).max(1e13).optional();
 
 export const importRowSchema = z.object({
   referencia: z.string().trim().max(80).optional(),
-  titulo: z.string().trim().min(5, "El título debe tener al menos 5 caracteres").max(140, "Título muy largo (máx. 140)"),
-  operacion: z.enum(Object.keys(OPERATIONS) as [keyof typeof OPERATIONS], { error: "Operación no válida (venta, renta o ambas)" }),
-  tipo: z.enum(Object.keys(PROPERTY_TYPES) as [keyof typeof PROPERTY_TYPES], { error: "Tipo no válido" }),
+  titulo: z.string().trim().min(5, M.titleMin).max(140, M.titleMax),
+  operacion: z.enum(Object.keys(OPERATIONS) as [keyof typeof OPERATIONS], { error: M.operation }),
+  tipo: z.enum(Object.keys(PROPERTY_TYPES) as [keyof typeof PROPERTY_TYPES], { error: M.type }),
   precio_venta: optPrice,
   precio_renta: optPrice,
-  moneda: z.enum(["DOP", "USD"], { error: "Moneda no válida (DOP o USD)" }).optional(),
+  moneda: z.enum(["DOP", "USD"], { error: M.currency }).optional(),
   provincia: z.string().trim().max(80).optional(),
   municipio: z.string().trim().max(80).optional(),
   sector: z.string().trim().max(120).optional(),
@@ -114,18 +120,18 @@ export const importRowSchema = z.object({
   parqueos: optInt(2000),
   area_construida_m2: optArea,
   area_terreno_m2: optArea,
-  descripcion: z.string().trim().max(8000, "Descripción muy larga (máx. 8000)").optional(),
-  fotos: z.array(httpsUrl).max(MAX_PHOTOS_PER_ROW, `Máximo ${MAX_PHOTOS_PER_ROW} fotos por inmueble`).default([]),
+  descripcion: z.string().trim().max(8000, M.descriptionMax).optional(),
+  fotos: z.array(httpsUrl).max(MAX_PHOTOS_PER_ROW, fmt(T.maxPhotos, { n: MAX_PHOTOS_PER_ROW })).default([]),
   video: httpsUrl.optional(),
 }).superRefine((d, ctx) => {
   if ((d.precio_venta !== undefined || d.precio_renta !== undefined) && !d.moneda) {
-    ctx.addIssue({ code: "custom", path: ["moneda"], message: "Indique la moneda del precio (DOP o USD)" });
+    ctx.addIssue({ code: "custom", path: ["moneda"], message: M.currencyRequired });
   }
   if (d.precio_venta !== undefined && d.operacion === "renta") {
-    ctx.addIssue({ code: "custom", path: ["precio_venta"], message: "Tiene precio de venta pero la operación es renta" });
+    ctx.addIssue({ code: "custom", path: ["precio_venta"], message: M.saleOnRent });
   }
   if (d.precio_renta !== undefined && d.operacion === "venta") {
-    ctx.addIssue({ code: "custom", path: ["precio_renta"], message: "Tiene precio de renta pero la operación es venta" });
+    ctx.addIssue({ code: "custom", path: ["precio_renta"], message: M.rentOnSale });
   }
 });
 
@@ -167,19 +173,14 @@ function rawToCandidate(raw: Partial<Record<ImportColumn, unknown>>) {
   };
 }
 
-const FIELD_NAMES: Record<string, string> = {
-  titulo: "Título", operacion: "Operación", tipo: "Tipo", precio_venta: "Precio de venta", precio_renta: "Precio de renta",
-  moneda: "Moneda", habitaciones: "Habitaciones", banos: "Baños", medios_banos: "Medios baños", parqueos: "Parqueos",
-  area_construida_m2: "Área construida", area_terreno_m2: "Área de terreno", descripcion: "Descripción", fotos: "Fotos", video: "Video",
-  referencia: "Referencia", provincia: "Provincia", municipio: "Municipio", sector: "Sector",
-};
+const FIELD_NAMES = importMsgEs.fields;
 
 export function validateImportRow(raw: Partial<Record<ImportColumn, unknown>>): { data?: ImportRow; errors: string[] } {
   const r = importRowSchema.safeParse(rawToCandidate(raw));
   if (r.success) return { data: r.data, errors: [] };
   const errors = r.error.issues.map((i) => {
     const field = FIELD_NAMES[String(i.path[0])] ?? String(i.path[0] ?? "");
-    const msg = i.code === "invalid_type" && i.path[0] && /number/.test(i.message) ? "debe ser un número" : i.message;
+    const msg = i.code === "invalid_type" && i.path[0] && /number/.test(i.message) ? M.notNumber : i.message;
     return field ? `${field}: ${msg}` : msg;
   });
   return { errors: [...new Set(errors)] };
@@ -191,7 +192,7 @@ export function validateImportRow(raw: Partial<Record<ImportColumn, unknown>>): 
  */
 export function parseImportSheet(sheet: unknown[][]): { rows: ParsedImportRow[]; error?: string } {
   const headerIdx = sheet.findIndex((r) => r.some((c) => columnFor(c) === "titulo"));
-  if (headerIdx < 0) return { rows: [], error: "No se encontró la fila de encabezados (debe tener al menos la columna «titulo»)." };
+  if (headerIdx < 0) return { rows: [], error: M.noHeader };
   const cols = sheet[headerIdx].map(columnFor);
   const rows: ParsedImportRow[] = [];
   for (let i = headerIdx + 1; i < sheet.length; i++) {
@@ -200,11 +201,11 @@ export function parseImportSheet(sheet: unknown[][]): { rows: ParsedImportRow[];
     const raw: Partial<Record<ImportColumn, unknown>> = {};
     cols.forEach((c, j) => { if (c) raw[c] = cells[j]; });
     if (String(cellText(raw.titulo) ?? "").startsWith("*")) continue; // fila de ayuda de la plantilla
-    if (rows.length >= MAX_IMPORT_ROWS) return { rows, error: `Máximo ${MAX_IMPORT_ROWS} inmuebles por archivo. Divida el archivo.` };
+    if (rows.length >= MAX_IMPORT_ROWS) return { rows, error: fmt(T.maxRows, { n: MAX_IMPORT_ROWS }) };
     const v = validateImportRow(raw);
-    rows.push({ line: i + 1, data: v.data, errors: v.errors, title: cellText(raw.titulo) ?? "(sin título)" });
+    rows.push({ line: i + 1, data: v.data, errors: v.errors, title: cellText(raw.titulo) ?? M.untitled });
   }
-  if (!rows.length) return { rows, error: "El archivo no tiene inmuebles debajo de los encabezados." };
+  if (!rows.length) return { rows, error: M.noRows };
   return { rows };
 }
 

@@ -1,6 +1,12 @@
 import type { Dictionary } from "./es";
+import { account } from "./sections/account";
+import { admin } from "./sections/admin";
+import { editor } from "./sections/editor";
+import { panel } from "./sections/panel";
+import { status } from "./sections/status";
 
-// Textos de la interfaz pública en inglés. Mismas claves que es.ts (TypeScript avisa si falta alguna).
+// Textos de la interfaz en inglés. Mismas claves que es.ts (TypeScript avisa si falta alguna).
+// Las secciones del área privada (cuenta, panel, editor, panel MAJ y estados) están en sections/.
 export const en: Dictionary = {
   meta: {
     title: "MAJ REALTY SRL · Real estate in the Dominican Republic",
@@ -647,6 +653,18 @@ export const en: Dictionary = {
     retry: "Try again",
   },
   legal: {
-    note: "Our legal documents are available in Spanish only.",
+    note: "This English version is a reference translation provided for convenience only. The Spanish version is the governing text and prevails in case of any discrepancy.",
+    spanishOnly: "This document is currently available in Spanish only.",
+    meta: "Legal documents",
+    title: "Legal documents",
+    draftsWarning: "Drafts pending review by a Dominican lawyer. They have not been legally approved.",
+    back: "← Legal documents",
+    draftNote: "Draft ({v}) subject to review by a Dominican lawyer. It has not been legally approved.",
+    notFound: "Document not found",
   },
+  account: account.en,
+  panel: panel.en,
+  editor: editor.en,
+  admin: admin.en,
+  status: status.en,
 };

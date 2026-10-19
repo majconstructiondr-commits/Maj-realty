@@ -6,6 +6,12 @@ import type { ActionState } from "@/lib/action-state";
 import { QUOTE_SERVICES } from "@/lib/admin/labels";
 import { parseForm, zBool, zCurrency, zEnumOf, zNum, zOptDate, zOptNum, zOptText, zOptUuid, zText, zUuid } from "@/lib/admin/form";
 import { confirmRows, fail, findUserByEmail, ok, staffCtx } from "@/lib/admin/server";
+import { localizeState } from "@/i18n";
+import { es } from "@/i18n/es";
+import { getLocale } from "@/i18n/server";
+
+// Mensajes en español desde el diccionario; las acciones exportadas los traducen al responder.
+const M = es.admin.msg;
 
 const path = (id: string) => `/admin/cotizaciones/${id}`;
 
@@ -22,18 +28,18 @@ const stagesField = z.preprocess((v) => {
   } catch {
     return null;
   }
-}, z.array(stageSchema, { error: "Etapas no válidas" }).max(30, "Máximo 30 etapas"));
+}, z.array(stageSchema, { error: M.invalidStages }).max(30, M.maxStages));
 
 const header = {
-  client_email: z.preprocess((v) => (v === "" ? undefined : v), z.email("Correo no válido").max(160).optional()),
+  client_email: z.preprocess((v) => (v === "" ? undefined : v), z.email(M.invalidEmail).max(160).optional()),
   client_user_id: zOptUuid,
   unlink_client: zBool,
-  client_name: zText(160, 2, "Indique el nombre del cliente"),
+  client_name: zText(160, 2, M.clientNameRequired),
   service: zEnumOf(QUOTE_SERVICES),
-  title: zText(200, 3, "Indique un título (mínimo 3 caracteres)"),
+  title: zText(200, 3, M.titleMin3),
   currency: zCurrency,
   tax_label: zOptText(40),
-  tax_percent: zOptNum({ min: 0, max: 99.99, msg: "Tasa no válida" }),
+  tax_percent: zOptNum({ min: 0, max: 99.99, msg: M.invalidRate }),
   valid_until: zOptDate,
   scope: zOptText(4000),
   exclusions: zOptText(4000),
@@ -70,6 +76,9 @@ function headerRow(d: HeaderData, clientId: string | null) {
 }
 
 export async function createQuote(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return localizeState(await createQuoteEs(_p, fd), await getLocale());
+}
+async function createQuoteEs(_p: ActionState, fd: FormData): Promise<ActionState> {
   const { supabase } = await staffCtx("/admin/cotizaciones");
   const f = parseForm(z.object({ ...header, request_id: zOptUuid, stages: stagesField }), fd);
   if (!f.ok) return f.state;
@@ -84,6 +93,9 @@ export async function createQuote(_p: ActionState, fd: FormData): Promise<Action
 }
 
 export async function updateQuote(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return localizeState(await updateQuoteEs(_p, fd), await getLocale());
+}
+async function updateQuoteEs(_p: ActionState, fd: FormData): Promise<ActionState> {
   const { supabase } = await staffCtx("/admin/cotizaciones");
   const f = parseForm(z.object({ ...header, id: zUuid, stages: stagesField }), fd);
   if (!f.ok) return f.state;
@@ -93,20 +105,23 @@ export async function updateQuote(_p: ActionState, fd: FormData): Promise<Action
   const res = await supabase.from("quotes").update({ ...headerRow(f.data, client.id), stages })
     .eq("id", id).eq("status", "borrador").select("id");
   revalidatePath(path(id));
-  return confirmRows(res, "Cotización guardada.");
+  return confirmRows(res, M.quoteSaved);
 }
 
 const itemSchema = {
   quote_id: zUuid,
-  description: zText(500, 1, "Describa la partida"),
-  quantity: zNum({ min: 0.001, max: 1e9, msg: "Cantidad no válida" }),
+  description: zText(500, 1, M.describeItem),
+  quantity: zNum({ min: 0.001, max: 1e9, msg: M.invalidQuantity }),
   unit: z.preprocess((v) => (v === "" || v === undefined ? "unidad" : v), zText(30)),
-  unit_price: zNum({ min: 0, max: 1e12, msg: "Precio no válido" }),
+  unit_price: zNum({ min: 0, max: 1e12, msg: M.invalidPrice }),
   taxable: zBool,
   sort_order: zOptNum({ int: true, min: 0, max: 10000 }),
 };
 
 export async function addQuoteItem(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return localizeState(await addQuoteItemEs(_p, fd), await getLocale());
+}
+async function addQuoteItemEs(_p: ActionState, fd: FormData): Promise<ActionState> {
   const { supabase } = await staffCtx("/admin/cotizaciones");
   const f = parseForm(z.object(itemSchema), fd);
   if (!f.ok) return f.state;
@@ -115,38 +130,50 @@ export async function addQuoteItem(_p: ActionState, fd: FormData): Promise<Actio
   const { error } = await supabase.from("quote_items").insert({ ...f.data, sort_order: sort });
   if (error) return fail(error);
   revalidatePath(path(f.data.quote_id));
-  return ok("Partida agregada.");
+  return ok(M.itemAdded);
 }
 
 export async function updateQuoteItem(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return localizeState(await updateQuoteItemEs(_p, fd), await getLocale());
+}
+async function updateQuoteItemEs(_p: ActionState, fd: FormData): Promise<ActionState> {
   const { supabase } = await staffCtx("/admin/cotizaciones");
   const f = parseForm(z.object({ ...itemSchema, id: zUuid }), fd);
   if (!f.ok) return f.state;
   const { id, quote_id, ...rest } = f.data;
   const res = await supabase.from("quote_items").update({ ...rest, sort_order: rest.sort_order ?? 0 }).eq("id", id).eq("quote_id", quote_id).select("id");
   revalidatePath(path(quote_id));
-  return confirmRows(res, "Partida actualizada.");
+  return confirmRows(res, M.itemUpdated);
 }
 
 export async function deleteQuoteItem(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return localizeState(await deleteQuoteItemEs(_p, fd), await getLocale());
+}
+async function deleteQuoteItemEs(_p: ActionState, fd: FormData): Promise<ActionState> {
   const { supabase } = await staffCtx("/admin/cotizaciones");
   const f = parseForm(z.object({ id: zUuid, quote_id: zUuid }), fd);
   if (!f.ok) return f.state;
   const res = await supabase.from("quote_items").delete().eq("id", f.data.id).eq("quote_id", f.data.quote_id).select("id");
   revalidatePath(path(f.data.quote_id));
-  return confirmRows(res, "Partida eliminada.");
+  return confirmRows(res, M.itemDeleted);
 }
 
 export async function setQuoteStatus(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return localizeState(await setQuoteStatusEs(_p, fd), await getLocale());
+}
+async function setQuoteStatusEs(_p: ActionState, fd: FormData): Promise<ActionState> {
   const { supabase } = await staffCtx("/admin/cotizaciones");
-  const f = parseForm(z.object({ id: zUuid, status: z.enum(["enviada", "anulada"], { error: "Estado no válido" }) }), fd);
+  const f = parseForm(z.object({ id: zUuid, status: z.enum(["enviada", "anulada"], { error: M.invalidStatus }) }), fd);
   if (!f.ok) return f.state;
   const res = await supabase.from("quotes").update({ status: f.data.status }).eq("id", f.data.id).select("id");
   revalidatePath(path(f.data.id));
-  return confirmRows(res, f.data.status === "enviada" ? "Cotización enviada. El cliente con cuenta vinculada recibe un aviso en su panel." : "Cotización anulada.");
+  return confirmRows(res, f.data.status === "enviada" ? M.quoteSent : M.quoteVoided);
 }
 
 export async function duplicateQuote(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return localizeState(await duplicateQuoteEs(_p, fd), await getLocale());
+}
+async function duplicateQuoteEs(_p: ActionState, fd: FormData): Promise<ActionState> {
   const { supabase } = await staffCtx("/admin/cotizaciones");
   const f = parseForm(z.object({ id: zUuid }), fd);
   if (!f.ok) return f.state;

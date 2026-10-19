@@ -7,10 +7,19 @@ import { CRM_STAGES, REQUEST_STATUSES } from "@/lib/admin/labels";
 import { parseForm, zBool, zEnumOf, zOptLocalDateTime, zOptText, zOptUuid, zText, zUuid } from "@/lib/admin/form";
 import { confirmRows, fail, ok, staffCtx } from "@/lib/admin/server";
 import { localDateTimeToIso } from "@/lib/format";
+import { localizeState } from "@/i18n";
+import { es } from "@/i18n/es";
+import { getLocale } from "@/i18n/server";
+
+// Mensajes en español desde el diccionario; las acciones exportadas los traducen al responder.
+const M = es.admin.msg;
 
 const path = (id: string) => `/admin/solicitudes/${id}`;
 
 export async function updateRequest(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return localizeState(await updateRequestEs(_p, fd), await getLocale());
+}
+async function updateRequestEs(_p: ActionState, fd: FormData): Promise<ActionState> {
   const { supabase } = await staffCtx();
   const f = parseForm(z.object({
     id: zUuid,
@@ -31,22 +40,28 @@ export async function updateRequest(_p: ActionState, fd: FormData): Promise<Acti
     next_action_at: next_action_at ? localDateTimeToIso(next_action_at) : null,
   }).eq("id", id).select("id");
   revalidatePath(path(id));
-  return confirmRows(res, "Solicitud actualizada. Los cambios quedan en el historial.");
+  return confirmRows(res, M.requestUpdated);
 }
 
 export async function addRequestNote(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return localizeState(await addRequestNoteEs(_p, fd), await getLocale());
+}
+async function addRequestNoteEs(_p: ActionState, fd: FormData): Promise<ActionState> {
   const { supabase } = await staffCtx();
-  const f = parseForm(z.object({ id: zUuid, body: zText(4000, 2, "Escriba la nota"), visible: zBool }), fd);
+  const f = parseForm(z.object({ id: zUuid, body: zText(4000, 2, M.writeNote), visible: zBool }), fd);
   if (!f.ok) return f.state;
   const { error } = await supabase.rpc("add_request_note", { p_request: f.data.id, p_body: f.data.body, p_private: !f.data.visible });
   if (error) return fail(error);
   revalidatePath(path(f.data.id));
-  return ok(f.data.visible ? "Nota visible para el cliente agregada." : "Nota privada agregada.");
+  return ok(f.data.visible ? M.publicNoteAdded : M.privateNoteAdded);
 }
 
 export async function startRequestConversation(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return localizeState(await startRequestConversationEs(_p, fd), await getLocale());
+}
+async function startRequestConversationEs(_p: ActionState, fd: FormData): Promise<ActionState> {
   const { supabase } = await staffCtx();
-  const f = parseForm(z.object({ id: zUuid, subject: zText(160, 2, "Indique el asunto"), body: zOptText(4000) }), fd);
+  const f = parseForm(z.object({ id: zUuid, subject: zText(160, 2, M.subjectRequired), body: zOptText(4000) }), fd);
   if (!f.ok) return f.state;
   const { data, error } = await supabase.rpc("start_conversation", {
     p_property: null, p_request: f.data.id, p_subject: f.data.subject, p_body: f.data.body ?? "",

@@ -5,6 +5,8 @@ import { createClient } from "../supabase/server";
 import { demoListings, demoMedia, demoPrices } from "../demo/data";
 import { PAGE_SIZE, type SearchFilters } from "./search";
 import type { CatalogListing, CatalogMedia, CatalogPrice } from "./types";
+import type { FeedListing } from "./feed";
+import { listingHref } from "@/components/property/href";
 
 export type SearchResult = { items: CatalogListing[]; total: number; page: number; pages: number; demo: boolean; error?: string };
 
@@ -146,4 +148,36 @@ export async function publicCodesForSitemap() {
   const supabase = await createClient();
   const { data } = await supabase.from("catalog").select("code, slug, updated_at").eq("is_demo", false).limit(5000);
   return (data ?? []) as { code: string; slug: string; updated_at: string }[];
+}
+
+/** Propiedades públicas (sin demostración) con sus fotos, para el enlace de otras plataformas. */
+export async function publicFeedListings(base: string): Promise<FeedListing[]> {
+  if (!hasSupabase) return [];
+  const supabase = await createClient();
+  const { data } = await supabase.from("catalog").select("*").eq("is_demo", false).order("published_at", { ascending: false }).limit(2000);
+  const items = (data ?? []) as CatalogListing[];
+  if (!items.length) return [];
+  const { data: media } = await supabase
+    .from("catalog_media")
+    .select("id, property_id, storage_path, external_url")
+    .eq("kind", "foto")
+    .in("property_id", items.map((i) => i.id))
+    .order("is_cover", { ascending: false })
+    .order("sort_order");
+  const photos = new Map<string, string[]>();
+  for (const m of (media ?? []) as Pick<CatalogMedia, "id" | "property_id" | "storage_path" | "external_url">[]) {
+    const url = m.storage_path ? `${base}/feeds/foto/${m.id}` : m.external_url;
+    if (url) photos.set(m.property_id, [...(photos.get(m.property_id) ?? []), url]);
+  }
+  return items.map((l) => ({ ...l, url: `${base}${listingHref(l)}`, images: photos.get(l.id) ?? [] }));
+}
+
+/** URL firmada nueva de una foto pública aprobada (null si no existe o no es pública). */
+export async function publicPhotoUrl(mediaId: string) {
+  if (!hasSupabase) return null;
+  const supabase = await createClient();
+  const { data } = await supabase.from("catalog_media").select("storage_path, external_url").eq("id", mediaId).eq("kind", "foto").maybeSingle();
+  if (!data) return null;
+  if (!data.storage_path) return (data.external_url as string | null) ?? null;
+  return (await signPaths([data.storage_path as string])).get(data.storage_path as string) ?? null;
 }

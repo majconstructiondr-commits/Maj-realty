@@ -4,6 +4,8 @@ import { isUuid, oneOf, pageOf, str, type SP } from "@/lib/admin/params";
 import { findUserByEmail, labelFor, staffCtx, userLabels } from "@/lib/admin/server";
 import { addDays, localDayStartIso } from "@/lib/admin/time";
 import { formatDate } from "@/lib/format";
+import { localizeMessage } from "@/i18n";
+import { getI18n } from "@/i18n/server";
 
 const BASE = "/admin/auditoria";
 const TABLES = [
@@ -28,6 +30,9 @@ const short = (v: unknown) => {
 export default async function AdminAudit(props: PageProps<"/admin/auditoria">) {
   const sp = (await props.searchParams) as SP;
   const { supabase } = await staffCtx(BASE);
+  const { d, locale } = await getI18n();
+  const c = d.admin.common;
+  const t = d.admin.audit;
   const table = oneOf(sp, "tabla", TABLES);
   const action = oneOf(sp, "accion", ACTIONS);
   const registro = str(sp, "registro", 80);
@@ -60,29 +65,29 @@ export default async function AdminAudit(props: PageProps<"/admin/auditoria">) {
 
   return (
     <>
-      <PageHeader title="Auditoría" />
-      <p className="small muted">Registro inmutable de cambios en datos sensibles. Solo lectura.</p>
+      <PageHeader title={t.title} />
+      <p className="small muted">{t.note}</p>
       <form method="get" className="card card-body form-grid" style={{ marginBottom: 16 }} role="search">
-        <div className="field"><label htmlFor="a-t">Tabla</label><select id="a-t" name="tabla" className="select" defaultValue={table}><option value="">Todas</option>{TABLES.map((t) => <option key={t} value={t}>{t}</option>)}</select></div>
-        <div className="field"><label htmlFor="a-a">Acción</label><select id="a-a" name="accion" className="select" defaultValue={action}><option value="">Todas</option>{ACTIONS.map((t) => <option key={t} value={t}>{t}</option>)}</select></div>
-        <div className="field"><label htmlFor="a-u">Actor (correo o id)</label><input id="a-u" name="actor" className="input" defaultValue={actor} /></div>
-        <div className="field"><label htmlFor="a-r">Registro (id)</label><input id="a-r" name="registro" className="input" defaultValue={registro} /></div>
-        <div className="field"><label htmlFor="a-d">Desde</label><input id="a-d" name="desde" type="date" className="input" defaultValue={desde} /></div>
-        <div className="field"><label htmlFor="a-h">Hasta</label><input id="a-h" name="hasta" type="date" className="input" defaultValue={hasta} /></div>
-        <div className="row"><button className="btn btn-primary" type="submit">Filtrar</button><Link href={BASE} className="btn btn-ghost">Limpiar</Link></div>
+        <div className="field"><label htmlFor="a-t">{t.table}</label><select id="a-t" name="tabla" className="select" defaultValue={table}><option value="">{c.allF}</option>{TABLES.map((x) => <option key={x} value={x}>{x}</option>)}</select></div>
+        <div className="field"><label htmlFor="a-a">{t.action}</label><select id="a-a" name="accion" className="select" defaultValue={action}><option value="">{c.allF}</option>{ACTIONS.map((x) => <option key={x} value={x}>{x}</option>)}</select></div>
+        <div className="field"><label htmlFor="a-u">{t.actor}</label><input id="a-u" name="actor" className="input" defaultValue={actor} /></div>
+        <div className="field"><label htmlFor="a-r">{t.record}</label><input id="a-r" name="registro" className="input" defaultValue={registro} /></div>
+        <div className="field"><label htmlFor="a-d">{t.from}</label><input id="a-d" name="desde" type="date" className="input" defaultValue={desde} /></div>
+        <div className="field"><label htmlFor="a-h">{t.to}</label><input id="a-h" name="hasta" type="date" className="input" defaultValue={hasta} /></div>
+        <div className="row"><button className="btn btn-primary" type="submit">{t.filter}</button><Link href={BASE} className="btn btn-ghost">{t.clear}</Link></div>
       </form>
-      {actorError && <p className="alert alert-warning">{actorError}</p>}
-      {error && <p className="alert alert-error">No se pudo cargar la auditoría.</p>}
-      {rows.length === 0 ? <Empty>Sin entradas.</Empty> : (
+      {actorError && <p className="alert alert-warning">{localizeMessage(actorError, locale)}</p>}
+      {error && <p className="alert alert-error">{t.loadError}</p>}
+      {rows.length === 0 ? <Empty>{t.empty}</Empty> : (
         <div className="table-wrap">
           <table className="table">
-            <thead><tr><th>Fecha</th><th>Actor</th><th>Acción</th><th>Tabla / registro</th><th>Cambios</th></tr></thead>
+            <thead><tr><th>{t.date}</th><th>{t.actorCol}</th><th>{t.action}</th><th>{t.tableRecord}</th><th>{t.changes}</th></tr></thead>
             <tbody>{rows.map((e) => {
               const keys = changedKeys(e);
               return (
                 <tr key={e.id}>
                   <td className="small">{formatDate(e.created_at, true)}</td>
-                  <td className="small">{e.actor_id ? <Link href={`${BASE}?actor=${e.actor_id}`}>{labelFor(people, e.actor_id)}</Link> : "Sistema"}</td>
+                  <td className="small">{e.actor_id ? <Link href={`${BASE}?actor=${e.actor_id}`}>{labelFor(people, e.actor_id)}</Link> : t.system}</td>
                   <td>{e.action}</td>
                   <td className="small">{e.table_name}{e.record_id && <div className="xs"><Link href={`${BASE}?registro=${encodeURIComponent(e.record_id)}`}>{e.record_id}</Link></div>}</td>
                   <td className="small">
@@ -91,9 +96,9 @@ export default async function AdminAudit(props: PageProps<"/admin/auditoria">) {
                         <details><summary>{keys.slice(0, 5).join(", ")}{keys.length > 5 ? "…" : ""}</summary>
                           <ul className="xs">{keys.map((k) => <li key={k}><strong>{k}</strong>: {short(e.old_data?.[k])} → {short(e.new_data?.[k])}</li>)}</ul>
                         </details>
-                      ) : "Sin cambios de contenido"
+                      ) : t.noContentChanges
                     ) : (
-                      <details><summary>Ver datos</summary><pre className="xs" style={{ whiteSpace: "pre-wrap", maxWidth: 480 }}>{JSON.stringify(e.action === "DELETE" ? e.old_data : e.new_data, null, 2)}</pre></details>
+                      <details><summary>{t.viewData}</summary><pre className="xs" style={{ whiteSpace: "pre-wrap", maxWidth: 480 }}>{JSON.stringify(e.action === "DELETE" ? e.old_data : e.new_data, null, 2)}</pre></details>
                     )}
                   </td>
                 </tr>

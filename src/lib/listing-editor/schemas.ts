@@ -5,6 +5,13 @@ import {
   CONDITIONS, FEATURES, NUMERIC_FIELDS, PROPERTY_TYPES, PROVINCES, SPACE_FIELDS, TRI, fieldApplies,
   type NumericField, type PropertyType, type SpaceField, type Tri,
 } from "@/lib/catalog/definitions";
+import { fmt } from "@/i18n/fmt";
+import { editorMsgEs } from "@/i18n/sections/editor-msg";
+
+// Mensajes en español (módulo pequeño); las acciones los traducen al responder (localizeState).
+const M = editorMsgEs.msg;
+const T = editorMsgEs.tpl;
+const F = editorMsgEs.fieldLabels;
 
 // ---------------------------------------------------------------------
 // Pasos
@@ -42,21 +49,21 @@ const keys = <T extends object>(o: T) => Object.keys(o) as [keyof T & string, ..
 
 export const checkbox = z.preprocess((v) => v === "on" || v === "true" || v === "1" || v === true, z.boolean());
 
-export function optText(max: number, label = "Este campo") {
+export function optText(max: number, label: string = F.field) {
   return z.preprocess(
     (v) => {
       const b = blankToNull(v);
       return typeof b === "string" ? b.trim() : b;
     },
-    z.string().max(max, `${label} admite como máximo ${max} caracteres`).nullable(),
+    z.string().max(max, fmt(T.maxChars, { label, max })).nullable(),
   );
 }
 
 /** Número opcional: vacío = null; acepta separadores de miles con coma. */
 export function optNumber(min: number, max: number, opts: { int?: boolean; label?: string } = {}) {
-  const label = opts.label ?? "El valor";
-  let n = z.number({ error: `${label} debe ser un número` }).min(min, `${label} no puede ser menor que ${min}`).max(max, `${label} no puede ser mayor que ${max}`);
-  if (opts.int) n = n.int(`${label} debe ser un número entero`);
+  const label = opts.label ?? F.value;
+  let n = z.number({ error: fmt(T.notNumber, { label }) }).min(min, fmt(T.minNum, { label, min })).max(max, fmt(T.maxNum, { label, max }));
+  if (opts.int) n = n.int(fmt(T.int, { label }));
   return z.preprocess((v) => {
     const b = blankToNull(v);
     if (b === null) return null;
@@ -68,17 +75,17 @@ export function optNumber(min: number, max: number, opts: { int?: boolean; label
 
 export const optDate = z.preprocess(
   blankToNull,
-  z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha no válida (AAAA-MM-DD)").nullable(),
+  z.string().regex(/^\d{4}-\d{2}-\d{2}$/, M.dateInvalid).nullable(),
 );
 
-export const optEmail = z.preprocess(blankToNull, z.email("Correo no válido").max(160).nullable());
+export const optEmail = z.preprocess(blankToNull, z.email(M.emailInvalid).max(160).nullable());
 
-function optEnum<T extends string>(values: readonly [T, ...T[]], msg = "Opción no válida") {
+function optEnum<T extends string>(values: readonly [T, ...T[]], msg: string = M.optionInvalid) {
   return z.preprocess(blankToNull, z.enum(values, { error: msg }).nullable());
 }
 
-export const triSchema = z.enum(keys(TRI), { error: "Elija Sí, No, Desconocido o No aplica" });
-export const currencySchema = z.enum(["DOP", "USD"], { error: "Seleccione la moneda" });
+export const triSchema = z.enum(keys(TRI), { error: M.tri });
+export const currencySchema = z.enum(["DOP", "USD"], { error: M.currency });
 
 /** Primer mensaje de error por campo (clave = nombre del campo del formulario). */
 export function zodFieldErrors(err: z.ZodError) {
@@ -94,11 +101,11 @@ export function zodFieldErrors(err: z.ZodError) {
 // Paso 1: datos básicos
 // ---------------------------------------------------------------------
 export const basicSchema = z.object({
-  title: z.string({ error: "Indique un título" }).trim().min(5, "El título debe tener al menos 5 caracteres").max(140, "El título admite como máximo 140 caracteres"),
-  operation: z.enum(["venta", "renta", "ambas"], { error: "Seleccione la operación" }),
-  property_type: z.enum(keys(PROPERTY_TYPES), { error: "Seleccione el tipo de inmueble" }),
-  condition: optEnum(keys(CONDITIONS), "Seleccione una condición válida"),
-  description: z.preprocess((v) => (typeof v === "string" ? v.trim() : ""), z.string().max(8000, "La descripción admite como máximo 8000 caracteres")),
+  title: z.string({ error: M.titleRequired }).trim().min(5, M.titleMin).max(140, M.titleMax),
+  operation: z.enum(["venta", "renta", "ambas"], { error: M.operation }),
+  property_type: z.enum(keys(PROPERTY_TYPES), { error: M.propertyType }),
+  condition: optEnum(keys(CONDITIONS), M.condition),
+  description: z.preprocess((v) => (typeof v === "string" ? v.trim() : ""), z.string().max(8000, M.descriptionMax)),
   available_from: optDate,
 });
 export type BasicData = z.infer<typeof basicSchema>;
@@ -108,7 +115,7 @@ export const newDraftSchema = z.object({
   title: basicSchema.shape.title,
   operation: basicSchema.shape.operation,
   property_type: basicSchema.shape.property_type,
-  organization_id: z.preprocess(blankToNull, z.uuid("Organización no válida").nullable()),
+  organization_id: z.preprocess(blankToNull, z.uuid(M.orgInvalid).nullable()),
 });
 
 export const operationsFor = (op: "venta" | "renta" | "ambas"): ("venta" | "renta")[] =>
@@ -119,29 +126,29 @@ export const operationsFor = (op: "venta" | "renta" | "ambas"): ("venta" | "rent
 // ---------------------------------------------------------------------
 export const locationSchema = z
   .object({
-    province: z.preprocess((v) => (typeof v === "string" ? v : ""), z.union([z.enum(PROVINCES), z.literal("")], { error: "Seleccione una provincia de la lista" })),
-    municipality: z.preprocess((v) => (typeof v === "string" ? v.trim() : ""), z.string().max(80, "Máximo 80 caracteres")),
-    sector: z.preprocess((v) => (typeof v === "string" ? v.trim() : ""), z.string().max(120, "Máximo 120 caracteres")),
-    street: optText(160, "La calle"),
-    street_number: optText(30, "El número"),
-    building: optText(120, "El edificio"),
-    unit: optText(40, "La unidad"),
-    exact_lat: optNumber(-90, 90, { label: "La latitud" }),
-    exact_lng: optNumber(-180, 180, { label: "La longitud" }),
+    province: z.preprocess((v) => (typeof v === "string" ? v : ""), z.union([z.enum(PROVINCES), z.literal("")], { error: M.province })),
+    municipality: z.preprocess((v) => (typeof v === "string" ? v.trim() : ""), z.string().max(80, M.max80)),
+    sector: z.preprocess((v) => (typeof v === "string" ? v.trim() : ""), z.string().max(120, M.max120)),
+    street: optText(160, F.street),
+    street_number: optText(30, F.number),
+    building: optText(120, F.building),
+    unit: optText(40, F.unit),
+    exact_lat: optNumber(-90, 90, { label: F.lat }),
+    exact_lng: optNumber(-180, 180, { label: F.lng }),
     exact_address_public: checkbox,
     owner_authorized_address: checkbox,
-    public_address: optText(300, "La dirección pública"),
+    public_address: optText(300, F.publicAddress),
   })
   .superRefine((d, ctx) => {
     if ((d.exact_lat === null) !== (d.exact_lng === null)) {
-      ctx.addIssue({ code: "custom", path: [d.exact_lat === null ? "exact_lat" : "exact_lng"], message: "Indique latitud y longitud juntas, o deje ambas vacías" });
+      ctx.addIssue({ code: "custom", path: [d.exact_lat === null ? "exact_lat" : "exact_lng"], message: M.latLng });
     }
     if (d.exact_address_public) {
       if (!d.owner_authorized_address) {
-        ctx.addIssue({ code: "custom", path: ["owner_authorized_address"], message: "Confirme que el propietario autorizó mostrar la dirección exacta" });
+        ctx.addIssue({ code: "custom", path: ["owner_authorized_address"], message: M.ownerAuthorized });
       }
       if (!d.public_address) {
-        ctx.addIssue({ code: "custom", path: ["public_address"], message: "Escriba la dirección que se mostrará públicamente" });
+        ctx.addIssue({ code: "custom", path: ["public_address"], message: M.publicAddress });
       }
     }
   })
@@ -173,19 +180,19 @@ export const PRICE_FIELDS = [
 ] as const;
 
 const priceBlockSchema = z.object({
-  amount: optNumber(0, 99999999999999, { label: "El precio" }),
+  amount: optNumber(0, 99999999999999, { label: F.price }),
   currency: currencySchema,
   negotiable: checkbox,
-  maintenance_amount: optNumber(0, 999999999999, { label: "El mantenimiento" }),
+  maintenance_amount: optNumber(0, 999999999999, { label: F.maintenance }),
   maintenance_currency: optEnum(["DOP", "USD"] as const),
   maintenance_included: z.preprocess((v) => blankToNull(v) ?? "desconocido", triSchema),
-  additional_costs: optText(1000, "Gastos adicionales"),
-  rent_period: optEnum(["mensual", "diario", "semanal", "anual"] as const, "Seleccione el período de renta"),
-  deposit_amount: optNumber(0, 999999999999, { label: "El depósito" }),
-  deposit_months: optNumber(0, 999.9, { label: "Los meses de depósito" }),
-  advance_months: optNumber(0, 999.9, { label: "Los meses de adelanto" }),
-  min_term_months: optNumber(0, 32767, { int: true, label: "El plazo mínimo" }),
-  delivery_conditions: optText(1000, "Condiciones de entrega"),
+  additional_costs: optText(1000, F.additionalCosts),
+  rent_period: optEnum(["mensual", "diario", "semanal", "anual"] as const, M.rentPeriod),
+  deposit_amount: optNumber(0, 999999999999, { label: F.deposit }),
+  deposit_months: optNumber(0, 999.9, { label: F.depositMonths }),
+  advance_months: optNumber(0, 999.9, { label: F.advanceMonths }),
+  min_term_months: optNumber(0, 32767, { int: true, label: F.minTerm }),
+  delivery_conditions: optText(1000, F.deliveryConditions),
 });
 
 export type PriceRow = {
@@ -298,7 +305,7 @@ export function parseDistribution(raw: Record<string, unknown>):
     const label = NUMERIC_FIELDS[f].label;
     const mode = raw[`${f}__modo`] ?? "desconocido";
     if (mode !== "valor" && mode !== "desconocido" && mode !== "no_aplica") {
-      errors[f] = `${label}: elija Valor, Desconocido o No aplica`;
+      errors[f] = fmt(T.chooseMode, { label });
       continue;
     }
     if (mode === "no_aplica") {
@@ -313,20 +320,20 @@ export function parseDistribution(raw: Record<string, unknown>):
     const lim = NUMERIC_LIMITS[f];
     const r = optNumber(lim.min, lim.max, { int: lim.int, label }).safeParse(raw[f]);
     if (!r.success) {
-      errors[f] = r.error.issues[0]?.message ?? `${label}: valor no válido`;
+      errors[f] = r.error.issues[0]?.message ?? fmt(T.invalidValue, { label });
     } else if (r.data === null) {
-      errors[f] = `${label}: escriba el valor (0 es válido) o elija Desconocido / No aplica`;
+      errors[f] = fmt(T.writeValue, { label });
     } else {
       out[f] = r.data;
     }
   }
   for (const s of spaceFieldKeys) {
     const r = triSchema.safeParse(raw[s] ?? "desconocido");
-    if (!r.success) errors[s] = `${SPACE_FIELDS[s]}: opción no válida`;
+    if (!r.success) errors[s] = fmt(T.invalidOption, { label: SPACE_FIELDS[s] });
     else out[s] = r.data;
   }
-  const roof = optText(500, "El uso del techo").safeParse(raw.roof_use_detail);
-  if (!roof.success) errors.roof_use_detail = roof.error.issues[0]?.message ?? "Texto no válido";
+  const roof = optText(500, F.roofUse).safeParse(raw.roof_use_detail);
+  if (!roof.success) errors.roof_use_detail = roof.error.issues[0]?.message ?? M.textInvalid;
   else out.roof_use_detail = roof.data;
   if (Object.keys(errors).length) return { ok: false, errors };
   out.na_fields = na;
@@ -346,19 +353,19 @@ export function parseFeatures(raw: Record<string, unknown>):
   const features: FeatureMap = {};
   for (const k of featureKeys) {
     const v = triSchema.safeParse(raw[`feat_${k}`] ?? "desconocido");
-    const d = optText(200, "El detalle").safeParse(raw[`feat_${k}_detalle`]);
+    const d = optText(200, F.detail).safeParse(raw[`feat_${k}_detalle`]);
     if (!v.success) {
-      errors[`feat_${k}`] = `${FEATURES[k].label}: opción no válida`;
+      errors[`feat_${k}`] = fmt(T.invalidOption, { label: FEATURES[k].label });
       continue;
     }
     if (!d.success) {
-      errors[`feat_${k}_detalle`] = d.error.issues[0]?.message ?? "Detalle no válido";
+      errors[`feat_${k}_detalle`] = d.error.issues[0]?.message ?? M.detailInvalid;
       continue;
     }
     if (v.data === "desconocido" && !d.data) continue;
     features[k] = d.data ? { v: v.data, d: d.data } : { v: v.data };
   }
-  const rest = z.object({ condo_rules: optText(3000, "Las reglas"), restrictions: optText(2000, "Las restricciones") }).safeParse(raw);
+  const rest = z.object({ condo_rules: optText(3000, F.rules), restrictions: optText(2000, F.restrictions) }).safeParse(raw);
   if (!rest.success) Object.assign(errors, zodFieldErrors(rest.error));
   if (Object.keys(errors).length || !rest.success) return { ok: false, errors };
   return { ok: true, data: { features, ...rest.data } };
@@ -390,36 +397,36 @@ export const asksTitleInfo = (propertyType: string) => propertyType !== "apartam
 
 export const privateSchema = z
   .object({
-    owner_name: optText(160, "El nombre"),
-    owner_phone: optText(40, "El teléfono"),
+    owner_name: optText(160, F.name),
+    owner_phone: optText(40, F.phone),
     owner_email: optEmail,
     owner_id_type: optEnum(keys(ID_TYPES)),
-    owner_id_number: optText(40, "El número de documento"),
+    owner_id_number: optText(40, F.idNumber),
     publisher_relationship: optEnum(keys(RELATIONSHIPS)),
     publication_authorized: checkbox,
     authorization_date: optDate,
     authorization_expires: optDate,
-    commission_terms: optText(1000, "Las condiciones de comisión"),
+    commission_terms: optText(1000, F.commission),
     exclusivity: z.preprocess((v) => (v === "si" ? true : v === "no" ? false : null), z.boolean().nullable()),
     exclusivity_expires: optDate,
-    title_type: optText(120, "El tipo de título"),
-    title_registry_number: optText(120, "La matrícula"),
-    cadastral_designation: optText(160, "La designación catastral"),
+    title_type: optText(120, F.titleType),
+    title_registry_number: optText(120, F.registry),
+    cadastral_designation: optText(160, F.cadastral),
     survey_status: optEnum(keys(SURVEY_STATUSES)),
     legal_status_certificate_date: optDate,
-    declared_liens: optText(2000, "Las cargas declaradas"),
-    tax_notes: optText(2000, "Las notas de impuestos"),
-    contract_notes: optText(2000, "Las notas de contrato"),
+    declared_liens: optText(2000, F.liens),
+    tax_notes: optText(2000, F.taxNotes),
+    contract_notes: optText(2000, F.contractNotes),
   })
   .superRefine((d, ctx) => {
     if (d.publication_authorized && !d.authorization_date) {
-      ctx.addIssue({ code: "custom", path: ["authorization_date"], message: "Indique la fecha de la autorización de publicación" });
+      ctx.addIssue({ code: "custom", path: ["authorization_date"], message: M.authDate });
     }
     if (d.authorization_date && d.authorization_expires && d.authorization_expires < d.authorization_date) {
-      ctx.addIssue({ code: "custom", path: ["authorization_expires"], message: "El vencimiento no puede ser anterior a la fecha de autorización" });
+      ctx.addIssue({ code: "custom", path: ["authorization_expires"], message: M.authExpires });
     }
     if (d.exclusivity !== true && d.exclusivity_expires) {
-      ctx.addIssue({ code: "custom", path: ["exclusivity_expires"], message: "Solo indique vencimiento si hay exclusividad" });
+      ctx.addIssue({ code: "custom", path: ["exclusivity_expires"], message: M.exclusivityExpires });
     }
   });
 export type PrivateData = z.infer<typeof privateSchema>;

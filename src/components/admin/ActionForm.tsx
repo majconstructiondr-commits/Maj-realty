@@ -2,6 +2,7 @@
 import { useRef, useState, useTransition } from "react";
 import { FormMessage } from "@/components/forms/FormBits";
 import { idle, type ActionState } from "@/lib/action-state";
+import { usePrivateI18n } from "@/i18n/client";
 
 type Action = (prev: ActionState, fd: FormData) => Promise<ActionState>;
 
@@ -26,6 +27,7 @@ export function ActionForm({
   const [state, setState] = useState<ActionState>(idle);
   const [pending, start] = useTransition();
   const ref = useRef<HTMLFormElement>(null);
+  const { d } = usePrivateI18n();
   return (
     <form
       ref={ref}
@@ -44,7 +46,7 @@ export function ActionForm({
     >
       {children}
       <button type="submit" className={buttonClass} disabled={pending} aria-busy={pending}>
-        {pending ? pendingText ?? "Procesando…" : submit}
+        {pending ? pendingText ?? d.admin.common.processing : submit}
       </button>
       <FormMessage state={state} />
     </form>

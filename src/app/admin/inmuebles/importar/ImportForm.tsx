@@ -1,9 +1,11 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { OPERATIONS, PROPERTY_TYPES } from "@/lib/catalog/definitions";
 import { parseCsv, parseImportSheet, type ParsedImportRow } from "@/lib/import/listings";
 import { importListingRow, type ImportResult } from "./actions";
+import { fmt } from "@/i18n/fmt";
+import { usePrivateI18n } from "@/i18n/client";
+import { importMsgEs, localizeImportMessage } from "@/i18n/sections/import-msg";
 
 type Outcome = ImportResult | { status: "pending" } | { status: "running" };
 
@@ -14,6 +16,10 @@ async function readFile(file: File): Promise<unknown[][]> {
 }
 
 export function ImportForm() {
+  const { d } = usePrivateI18n();
+  const t = d.admin.importUi;
+  // La validación de filas corre en el navegador con mensajes en español: se traducen al mostrarlos.
+  const tr = (m: string) => localizeImportMessage(m, d.admin.importer);
   const [rows, setRows] = useState<ParsedImportRow[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
   const [source, setSource] = useState("");
@@ -28,13 +34,13 @@ export function ImportForm() {
   async function onFile(file: File | undefined) {
     setRows([]); setOutcomes({}); setFileError(null);
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { setFileError("El archivo pesa más de 5 MB."); return; }
+    if (file.size > 5 * 1024 * 1024) { setFileError(importMsgEs.msg.fileTooLarge); return; }
     try {
       const parsed = parseImportSheet(await readFile(file));
       setRows(parsed.rows);
       if (parsed.error) setFileError(parsed.error);
     } catch {
-      setFileError("No se pudo leer el archivo. Use .xlsx o .csv.");
+      setFileError(importMsgEs.msg.unreadable);
     }
   }
 
@@ -54,7 +60,7 @@ export function ImportForm() {
       try {
         res = await importListingRow({ row: r.data!, source, authorized });
       } catch {
-        res = { status: "error", message: "Error de conexión. Vuelva a intentar: las filas ya importadas no se duplican si tienen referencia." };
+        res = { status: "error", message: tr(importMsgEs.msg.connection) };
       }
       setOutcomes((o) => ({ ...o, [r.line]: res }));
     }
@@ -72,50 +78,50 @@ export function ImportForm() {
 
   return (
     <div className="card card-body stack">
-      <h2 style={{ margin: 0 }}>Subir archivo</h2>
+      <h2 style={{ margin: 0 }}>{t.upload}</h2>
       <div className="form-grid">
         <div className="field">
-          <label htmlFor="imp-file" className="required">Archivo de Excel o CSV</label>
+          <label htmlFor="imp-file" className="required">{t.file}</label>
           <input id="imp-file" type="file" className="input" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={running} onChange={(e) => onFile(e.target.files?.[0])} />
         </div>
         <div className="field">
-          <label htmlFor="imp-source" className="required">Empresa de origen</label>
-          <input id="imp-source" className="input" maxLength={120} value={source} disabled={running} onChange={(e) => setSource(e.target.value)} placeholder="Nombre de la empresa" />
+          <label htmlFor="imp-source" className="required">{t.source}</label>
+          <input id="imp-source" className="input" maxLength={120} value={source} disabled={running} onChange={(e) => setSource(e.target.value)} placeholder={t.sourcePlaceholder} />
         </div>
       </div>
       <label className="check">
         <input type="checkbox" checked={authorized} disabled={running} onChange={(e) => setAuthorized(e.target.checked)} />
-        <span>Tengo autorización escrita de esta empresa para publicar estos inmuebles y sus fotos.</span>
+        <span>{t.authorized}</span>
       </label>
-      {fileError ? <p className="alert alert-error" role="alert">{fileError}</p> : null}
+      {fileError ? <p className="alert alert-error" role="alert">{tr(fileError)}</p> : null}
 
       {rows.length ? (
         <>
           <p className="small" style={{ margin: 0 }}>
-            {rows.length} fila(s) en el archivo: <strong>{valid.length} listas</strong>
-            {rows.length - valid.length ? <>, <strong>{rows.length - valid.length} con errores</strong> (no se importan; corríjalas en el Excel y súbalo de nuevo)</> : null}.
+            {fmt(t.rowsInFile, { n: rows.length })} <strong>{fmt(t.ready, { n: valid.length })}</strong>
+            {rows.length - valid.length ? <>, <strong>{fmt(t.withErrors, { n: rows.length - valid.length })}</strong> {t.withErrorsNote}</> : null}.
           </p>
           <div className="table-wrap">
             <table className="table">
-              <thead><tr><th>Fila</th><th>Título</th><th>Tipo</th><th>Fotos</th><th>Resultado</th></tr></thead>
+              <thead><tr><th>{t.row}</th><th>{t.titleCol}</th><th>{t.typeCol}</th><th>{t.photosCol}</th><th>{t.resultCol}</th></tr></thead>
               <tbody>
                 {rows.map((r) => {
                   const o = outcomes[r.line];
                   return (
                     <tr key={r.line}>
                       <td>{r.line}</td>
-                      <td>{r.title}{r.data?.referencia ? <div className="small muted">Ref. {r.data.referencia}</div> : null}</td>
-                      <td className="small">{r.data ? `${PROPERTY_TYPES[r.data.tipo]} · ${OPERATIONS[r.data.operacion]}` : "—"}</td>
+                      <td>{tr(r.title)}{r.data?.referencia ? <div className="small muted">{fmt(t.ref, { ref: r.data.referencia })}</div> : null}</td>
+                      <td className="small">{r.data ? `${d.labels.propertyTypes[r.data.tipo]} · ${d.labels.operations[r.data.operacion]}` : "—"}</td>
                       <td>{r.data ? r.data.fotos.length : "—"}</td>
                       <td className="small">
-                        {r.errors.length ? <ul className="error" style={{ margin: 0, paddingLeft: 16 }}>{r.errors.map((e) => <li key={e}>{e}</li>)}</ul>
-                          : !o ? "Lista"
-                          : o.status === "pending" ? "En cola"
-                          : o.status === "running" ? "Importando…"
-                          : o.status === "duplicate" ? <>Ya existía: <Link href={`/admin/inmuebles/${o.id}`}>{o.code}</Link></>
+                        {r.errors.length ? <ul className="error" style={{ margin: 0, paddingLeft: 16 }}>{r.errors.map((e) => <li key={e}>{tr(e)}</li>)}</ul>
+                          : !o ? t.rowReady
+                          : o.status === "pending" ? t.queued
+                          : o.status === "running" ? t.importing
+                          : o.status === "duplicate" ? <>{t.existed} <Link href={`/admin/inmuebles/${o.id}`}>{o.code}</Link></>
                           : o.status === "error" ? <span className="error">{o.message}</span>
                           : <>
-                              Creado <Link href={`/admin/inmuebles/${o.id}`}>{o.code}</Link> · {o.photos} foto(s)
+                              {t.created} <Link href={`/admin/inmuebles/${o.id}`}>{o.code}</Link> · {fmt(t.photos, { n: o.photos })}
                               {o.photoErrors.length ? <ul style={{ margin: "4px 0 0", paddingLeft: 16 }}>{o.photoErrors.map((e) => <li key={e}>{e}</li>)}</ul> : null}
                             </>}
                       </td>
@@ -127,14 +133,14 @@ export function ImportForm() {
           </div>
           {running || done ? (
             <p className="small" role="status" aria-live="polite" style={{ margin: 0 }}>
-              {running ? `Importando… ${done} listos. No cierre esta página.` : `Terminado: ${summary.ok} creados, ${summary.dup} ya existían, ${summary.err} con error.`}
+              {running ? fmt(t.progress, { n: done }) : fmt(t.finished, { ok: summary.ok, dup: summary.dup, err: summary.err })}
             </p>
           ) : null}
           <div className="row">
             <button type="button" className="btn btn-primary" disabled={!remaining || !source.trim() || !authorized || running} onClick={run}>
-              {running ? "Importando…" : done ? `Reintentar ${remaining} con error` : `Importar ${valid.length} inmueble(s) como borrador`}
+              {running ? t.importing : done ? fmt(t.retry, { n: remaining }) : fmt(t.importN, { n: valid.length })}
             </button>
-            {!running && done ? <Link className="btn btn-ghost" href="/admin/inmuebles?status=borrador&maj=1">Ver borradores</Link> : null}
+            {!running && done ? <Link className="btn btn-ghost" href="/admin/inmuebles?status=borrador&maj=1">{t.viewDrafts}</Link> : null}
           </div>
         </>
       ) : null}

@@ -35,10 +35,13 @@ const LABELS: Record<string, string> = {
   min: "Mínimo", max: "Máximo", hab: "Habitaciones", banos: "Baños", parqueos: "Parqueos", m2: "m² mín.", car: "Características",
 };
 
-/** Resumen corto para mostrar en la lista ("Tipo: casa · Provincia: Santiago"). */
-export function describeSavedSearch(query: SavedSearchQuery): string {
+/** Resumen corto para mostrar en la lista ("Tipo: casa · Provincia: Santiago"), con las etiquetas del idioma activo. */
+export function describeSavedSearch(
+  query: SavedSearchQuery,
+  t: { labels: Record<string, string>; all: string } = { labels: LABELS, all: "Todos los inmuebles" },
+): string {
   const sp = new URLSearchParams(query.qs);
   const parts: string[] = [];
-  for (const [k, v] of sp) if (LABELS[k]) parts.push(`${LABELS[k]}: ${v}`);
-  return parts.length ? parts.join(" · ") : "Todos los inmuebles";
+  for (const [k, v] of sp) if (t.labels[k]) parts.push(`${t.labels[k]}: ${v}`);
+  return parts.length ? parts.join(" · ") : t.all;
 }

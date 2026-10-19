@@ -4,6 +4,8 @@ import { QuoteHeaderFields, type QuoteHeaderValues } from "@/components/admin/Qu
 import { isUuid, str, type SP } from "@/lib/admin/params";
 import { getSetting, labelFor, staffCtx, userLabels } from "@/lib/admin/server";
 import { createQuote } from "../actions";
+import { fmt } from "@/i18n";
+import { getI18n } from "@/i18n/server";
 
 const SERVICE_BY_KIND: Record<string, string> = {
   remodelacion: "remodelacion", administracion: "administracion", legal: "legal", venta_captacion: "venta",
@@ -13,6 +15,7 @@ const SERVICE_BY_KIND: Record<string, string> = {
 export default async function NewQuote(props: PageProps<"/admin/cotizaciones/nueva">) {
   const sp = (await props.searchParams) as SP;
   const { supabase } = await staffCtx("/admin/cotizaciones/nueva");
+  const t = (await getI18n()).d.admin.quotes;
   const reqId = str(sp, "solicitud");
   const tax = await getSetting<{ label: string | null; rate: number }>(supabase, "quotes.default_tax");
   const v: QuoteHeaderValues = { tax_label: tax?.label ?? null, tax_rate: tax?.rate ?? 0, currency: "DOP", service: "otro" };
@@ -34,10 +37,10 @@ export default async function NewQuote(props: PageProps<"/admin/cotizaciones/nue
   }
   return (
     <>
-      <PageHeader title="Nueva cotización" back={{ href: reqNumber ? `/admin/solicitudes/${reqId}` : "/admin/cotizaciones", label: reqNumber ? `Solicitud ${reqNumber}` : "Cotizaciones" }} />
-      {reqNumber && <p className="alert alert-info small">Datos tomados de la solicitud {reqNumber}. Revíselos antes de guardar.</p>}
-      <p className="small muted">Se guarda como borrador. Después podrá agregar partidas y enviarla.</p>
-      <ActionForm action={createQuote} submit="Crear borrador">
+      <PageHeader title={t.new} back={{ href: reqNumber ? `/admin/solicitudes/${reqId}` : "/admin/cotizaciones", label: reqNumber ? fmt(t.requestN, { n: reqNumber }) : t.title }} />
+      {reqNumber && <p className="alert alert-info small">{fmt(t.fromRequest, { n: reqNumber })}</p>}
+      <p className="small muted">{t.draftNote}</p>
+      <ActionForm action={createQuote} submit={t.createDraft}>
         {reqNumber && <input type="hidden" name="request_id" value={reqId} />}
         <QuoteHeaderFields v={v} />
       </ActionForm>

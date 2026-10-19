@@ -86,3 +86,91 @@ export const LEGAL_DOCS: Record<string, LegalDoc> = {
     ],
   },
 };
+
+// Traducción de referencia al inglés de los mismos borradores (mismas claves y secciones).
+// La versión en español es la que rige; las páginas lo indican con un aviso.
+export const LEGAL_DOCS_EN: Record<string, LegalDoc> = {
+  privacidad: {
+    title: "Privacy policy",
+    summary: "How we handle the personal data you give us.",
+    sections: [
+      { h: "Data controller", p: [`${company} is responsible for processing the data collected on this site. The company's contact details and RNC (tax ID) will be listed here once confirmed.`] },
+      { h: "Data we process", p: ["Contact details (name, phone, email), details of the requests you send, account data, internal messages, appointments, and documents you voluntarily upload for a service (for example, identification or property documents).", "Minimal technical data for security and operation (access logs and usage events such as listing views)."] },
+      { h: "Purposes", p: ["Handling your requests and providing the contracted services; managing listings and publishing licenses; coordinating visits; preparing quotes; complying with applicable legal obligations; preventing fraud and abuse.", "Sending you marketing information only if you expressly authorize it; you can withdraw that authorization at any time."] },
+      { h: "Legal basis and framework", p: ["Processing is based on your consent, on carrying out the relationship you request, or on compliance with legal obligations. Law No. 172-13 regulates the protection of personal data in the Dominican Republic. The company will review its processes and applicable obligations with professionals, including those that may arise from Law No. 155-17 for certain real estate agents."] },
+      { h: "Who we share data with", p: ["With authorized MAJ staff, with the assigned advertiser or advisor when you ask about a property, and with technology providers that host the service (for example, database and storage). We do not sell personal data."] },
+      { h: "Retention", p: ["We keep data for as long as needed for its purpose and for the periods required by applicable law. Some documents may be subject to legal retention and cannot be deleted immediately; we will assess this case by case."] },
+      { h: "Your rights", p: ["You can request access to, rectification, updating or deletion of your data, and object to certain processing, by writing through the complaints channel. We will respond within the applicable legal deadlines."] },
+      { h: "Security", p: ["We apply per-user access controls, private document storage with temporary links, encryption in transit (HTTPS) and an audit log. No system is completely infallible."] },
+    ],
+  },
+  terminos: {
+    title: "Terms of use",
+    summary: "Rules for using the site and accounts.",
+    sections: [
+      { h: "Use of the site", p: ["You can browse, search for properties and contact us without creating an account. Some features (chat, scheduling, favorites, publishing) require an account."] },
+      { h: "Property information", p: ["The information in each listing is declared by the advertiser. An approved account does not mean the property has been legally verified. When MAJ carries out a document review, the date and scope of that review are shown; it does not guarantee the absence of liens or encumbrances.", "Prices are shown in their original currency. Conversions, when shown, are approximate and state the rate, source and date."] },
+      { h: "Accounts", p: ["You are responsible for keeping your password confidential. We may suspend accounts that breach these terms or are used for fraud."] },
+      { h: "WhatsApp contact", p: ["WhatsApp buttons open a conversation in that app. Opening the link is not the same as a message sent to or received by MAJ."] },
+      { h: "Limitation", p: ["The site is provided as is. Calculators and references are approximate and do not constitute financial or legal advice or bank approval."] },
+    ],
+  },
+  "condiciones-publicacion": {
+    title: "Publishing conditions and license",
+    summary: "Rules for listing properties on MAJ.",
+    sections: [
+      { h: "What the license is", p: ["The “publishing license” is an internal contractual permission to publish on the MAJ platform. It is not a professional or government license."] },
+      { h: "Plans", p: ["Individual, Professional and Agency plans with price, active-listing quota, term and members defined by MAJ. Payments are reviewed manually with a receipt until a payment gateway is configured."] },
+      { h: "Review", p: ["Every listing is reviewed before it is shown. Material changes (price, location, documents and other relevant data) go back to review, and the published version stays online until they are approved."] },
+      { h: "Expiry or suspension", p: ["When the license expires, is suspended or is cancelled, listings are paused. Private data and history are kept according to the privacy policy."] },
+      { h: "Advertiser obligations", p: ["Only list real properties with the owner's authorization; keep the information up to date; do not upload private documents as public photos; do not publish third-party data without authorization."] },
+    ],
+  },
+  "autorizacion-propietario": {
+    title: "Owner authorization",
+    summary: "Template authorization to list and represent a property.",
+    sections: [
+      { h: "Minimum content", p: ["Identification of the owner or representative, description of the property, transaction (sale or rent), authorization to publish, whether showing the exact address is authorized, agreed commission, exclusivity and its expiry, signature and date."] },
+      { h: "Exact address", p: ["By default only an approximate location is published. The exact address is shown only with the owner's express authorization."] },
+    ],
+  },
+  "consentimiento-contacto": {
+    title: "Contact consent",
+    summary: "When and how we contact you.",
+    sections: [
+      { h: "Contact to handle your request", p: ["By submitting a form you authorize us to contact you through the channel you indicated in order to handle that request."] },
+      { h: "Marketing communications", p: ["We will only send you information about new properties or services if you tick the corresponding box. You can withdraw that consent at any time from your profile or by writing to us."] },
+    ],
+  },
+  reclamaciones: {
+    title: "Complaints channel",
+    summary: "How to file a complaint or exercise your rights over your data.",
+    sections: [
+      { h: "How to complain", p: ["Send your complaint through the contact form with “Reclamación” (complaint) in the subject, or through the published phone numbers and WhatsApp. You will receive a tracking number."] },
+      { h: "Listings", p: ["If a listing contains false information, use the “Report this listing” button on the property page."] },
+    ],
+  },
+  "reglas-verificacion": {
+    title: "Verification rules",
+    summary: "What the review labels mean.",
+    sections: [
+      { h: "“Identity reviewed”", p: ["Means that MAJ staff reviewed an identity document of the user on the date shown. It does not prove ownership of the property."] },
+      { h: "“Documents reviewed on [date]”", p: ["Means that MAJ staff reviewed the listed documents within the scope stated for that date. It is not an official certification and does not guarantee the absence of liens, encumbrances or other matters not included in the review. To know the legal status, we recommend requesting the corresponding certification from the Registro de Títulos (Title Registry)."] },
+      { h: "No label", p: ["If no label appears, MAJ has not recorded a review. The data is as declared by the advertiser."] },
+    ],
+  },
+  cookies: {
+    title: "Cookie policy",
+    summary: "Which cookies the site uses.",
+    sections: [
+      { h: "Necessary cookies", p: ["We use technical cookies to keep you signed in and protect forms. They are necessary for the site to work."] },
+      { h: "Analytics", p: ["No third-party analytics or advertising cookies are currently used. If they are added, this policy will be updated and the appropriate consent will be requested."] },
+      { h: "Maps", p: ["Maps load images from OpenStreetMap, which may log technical data about the request according to its own policy."] },
+    ],
+  },
+};
+
+/** Documentos en el idioma pedido (en inglés, la traducción de referencia). */
+export function legalDocs(locale: "es" | "en"): Record<string, LegalDoc> {
+  return locale === "en" ? LEGAL_DOCS_EN : LEGAL_DOCS;
+}

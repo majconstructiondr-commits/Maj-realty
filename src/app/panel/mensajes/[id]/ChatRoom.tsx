@@ -8,6 +8,7 @@ import { downloadHref } from "@/lib/panel/download";
 import { createClient } from "@/lib/supabase/client";
 import { compressImage, DOC_TYPES, IMAGE_TYPES, MAX_DOC_BYTES, safeFileName } from "@/lib/upload";
 import { FormMessage, SubmitButton } from "@/components/forms/FormBits";
+import { fmt, usePrivateI18n } from "@/i18n/client";
 
 export type ChatMessage = {
   id: string;
@@ -32,6 +33,8 @@ export function ChatRoom({ conversationId, me, initialMessages, names, open, can
   const [live, setLive] = useState<ChatMessage[]>([]);
   const [realtimeOk, setRealtimeOk] = useState<boolean | null>(null);
   const listRef = useRef<HTMLOListElement>(null);
+  const { d } = usePrivateI18n();
+  const t = d.panel.conversation;
 
   // Mensajes del servidor + los recibidos en tiempo real, sin duplicados y en orden.
   const messages = useMemo(() => {
@@ -93,9 +96,9 @@ export function ChatRoom({ conversationId, me, initialMessages, names, open, can
   }, [lastId]);
 
   return (
-    <section className="card" aria-label="Conversación">
+    <section className="card" aria-label={t.aria}>
       <ol ref={listRef} className="chat" aria-live="polite" aria-relevant="additions" style={{ listStyle: "none", margin: 0 }}>
-        {messages.length === 0 ? <li className="empty">Aún no hay mensajes.</li> : null}
+        {messages.length === 0 ? <li className="empty">{t.noMessages}</li> : null}
         {messages.map((m) => {
           const mine = m.sender_id === me;
           return (
@@ -104,12 +107,12 @@ export function ChatRoom({ conversationId, me, initialMessages, names, open, can
               {m.attachment_name ? (
                 <div className="small" style={{ marginTop: 6 }}>
                   <a href={downloadHref("adjunto", m.id)} style={{ color: "inherit" }}>
-                    Adjunto: {m.attachment_name}
+                    {fmt(t.attachment, { name: m.attachment_name })}
                   </a>
                 </div>
               ) : null}
               <div className="meta">
-                {mine ? "Usted" : names[m.sender_id] ?? "Equipo MAJ"} · {formatDate(m.created_at, true)}
+                {mine ? d.panel.shared.you : names[m.sender_id] ?? d.panel.shared.team} · {formatDate(m.created_at, true)}
               </div>
               {!mine && canWrite ? <ReportForm messageId={m.id} /> : null}
             </li>
@@ -117,13 +120,13 @@ export function ChatRoom({ conversationId, me, initialMessages, names, open, can
         })}
       </ol>
       <div className="card-body" style={{ borderTop: "1px solid var(--border)" }}>
-        {realtimeOk === false ? <p className="xs muted">Actualización automática cada 20 segundos.</p> : null}
+        {realtimeOk === false ? <p className="xs muted">{t.autoRefresh}</p> : null}
         {!canWrite ? (
-          <p className="small muted">Usted no participa en esta conversación.</p>
+          <p className="small muted">{t.notParticipant}</p>
         ) : open ? (
           <SendForm conversationId={conversationId} onSent={() => router.refresh()} />
         ) : (
-          <p className="alert alert-info">Esta conversación está cerrada. Si necesita algo más, inicie una nueva consulta.</p>
+          <p className="alert alert-info">{t.closed}</p>
         )}
       </div>
     </section>
@@ -134,12 +137,14 @@ function SendForm({ conversationId, onSent }: { conversationId: string; onSent: 
   const formRef = useRef<HTMLFormElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [fileKey, setFileKey] = useState(0);
+  const { d } = usePrivateI18n();
+  const t = d.panel.conversation;
 
   const [state, action] = useActionState<ActionState, FormData>(async (prev, fd) => {
     const f = fd.get("file");
     fd.delete("file");
     if (f instanceof File && f.size > 0) {
-      if (!DOC_TYPES.includes(f.type)) return { status: "error", message: "Formato no permitido. Use PDF, JPG, PNG o WebP." };
+      if (!DOC_TYPES.includes(f.type)) return { status: "error", message: t.badFormat };
       try {
         let body: Blob = f;
         let mime = f.type;
@@ -149,15 +154,15 @@ function SendForm({ conversationId, onSent }: { conversationId: string; onSent: 
           mime = "image/webp";
           name = f.name.replace(/\.[^.]+$/, "") + ".webp";
         }
-        if (body.size > MAX_DOC_BYTES) return { status: "error", message: "El archivo supera 15 MB." };
+        if (body.size > MAX_DOC_BYTES) return { status: "error", message: t.tooBig };
         const path = `conversations/${conversationId}/${safeFileName(name)}`;
         const up = await createClient().storage.from("private-docs").upload(path, body, { contentType: mime, upsert: false });
-        if (up.error) return { status: "error", message: "No se pudo subir el archivo. El mensaje no se envió." };
+        if (up.error) return { status: "error", message: t.uploadFailed };
         fd.set("attachment_path", path);
         fd.set("attachment_name", name.slice(0, 200));
         fd.set("attachment_mime", mime);
       } catch {
-        return { status: "error", message: "No se pudo procesar el archivo. El mensaje no se envió." };
+        return { status: "error", message: t.processFailed };
       }
     }
     return sendMessage(prev, fd);
@@ -177,11 +182,11 @@ function SendForm({ conversationId, onSent }: { conversationId: string; onSent: 
     <form ref={formRef} action={action} className="form">
       <input type="hidden" name="conversation_id" value={conversationId} />
       <div className="field">
-        <label htmlFor="chat-body">Mensaje</label>
+        <label htmlFor="chat-body">{t.message}</label>
         <textarea id="chat-body" name="body" className="textarea" maxLength={4000} rows={3} required={!file} />
       </div>
       <div className="field">
-        <label htmlFor="chat-file">Adjuntar archivo (opcional)</label>
+        <label htmlFor="chat-file">{t.attach}</label>
         <input
           key={fileKey}
           id="chat-file"
@@ -192,28 +197,30 @@ function SendForm({ conversationId, onSent }: { conversationId: string; onSent: 
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           aria-describedby="chat-file-hint"
         />
-        <span className="hint" id="chat-file-hint">PDF, JPG, PNG o WebP de hasta 15 MB. Solo los participantes pueden verlo.</span>
+        <span className="hint" id="chat-file-hint">{t.attachHint}</span>
       </div>
       {state.status === "error" ? <FormMessage state={state} /> : null}
-      <SubmitButton pendingText="Enviando…">Enviar</SubmitButton>
+      <SubmitButton pendingText={d.common.sending}>{t.send}</SubmitButton>
     </form>
   );
 }
 
 function ReportForm({ messageId }: { messageId: string }) {
   const [state, action] = useActionState<ActionState, FormData>(reportMessage, idle);
+  const { d } = usePrivateI18n();
+  const t = d.panel.conversation;
   return (
     <details style={{ marginTop: 4 }}>
-      <summary className="xs" style={{ cursor: "pointer" }}>Reportar</summary>
+      <summary className="xs" style={{ cursor: "pointer" }}>{t.report}</summary>
       {state.status === "ok" ? (
         <FormMessage state={state} />
       ) : (
         <form action={action} className="stack" style={{ marginTop: 6 }}>
           <input type="hidden" name="message_id" value={messageId} />
-          <label htmlFor={`rep-${messageId}`} className="xs">Motivo del reporte</label>
+          <label htmlFor={`rep-${messageId}`} className="xs">{t.reportReason}</label>
           <textarea id={`rep-${messageId}`} name="reason" className="textarea" required minLength={3} maxLength={1000} rows={2} />
           <FormMessage state={state} />
-          <SubmitButton className="btn btn-ghost btn-sm" pendingText="Enviando…">Enviar reporte</SubmitButton>
+          <SubmitButton className="btn btn-ghost btn-sm" pendingText={d.common.sending}>{t.sendReport}</SubmitButton>
         </form>
       )}
     </details>

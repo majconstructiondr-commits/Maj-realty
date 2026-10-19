@@ -6,11 +6,11 @@ import { useRouter } from "next/navigation";
 import { addDocument, deleteDocument, type SimpleResult } from "@/app/panel/publicaciones/editor-actions";
 import { formatDate } from "@/lib/format";
 import { DOC_TYPES_LABELS, type DocType } from "@/lib/listing-editor/schemas";
+import { usePrivateI18n } from "@/i18n/client";
 import type { EditorDocument } from "@/lib/listing-editor/types";
 import { createClient } from "@/lib/supabase/client";
 import { compressImage, DOC_TYPES, IMAGE_TYPES, MAX_DOC_BYTES, safeFileName } from "@/lib/upload";
 
-const REVIEW = { pendiente: "Pendiente de revisión", revisado: "Revisado por MAJ", observado: "Con observaciones" } as const;
 const REVIEW_BADGE = { pendiente: "badge-warning", revisado: "badge-success", observado: "badge-danger" } as const;
 
 export function DocumentManager({ propertyId, documents, live }: { propertyId: string; documents: EditorDocument[]; live: boolean }) {
@@ -21,12 +21,14 @@ export function DocumentManager({ propertyId, documents, live }: { propertyId: s
   const [busy, startBusy] = useTransition();
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { d: dict } = usePrivateI18n();
+  const t = dict.editor.docs;
 
   async function upload() {
     setMsg(null);
-    if (!docType) return setMsg({ ok: false, message: "Seleccione el tipo de documento." });
-    if (!file) return setMsg({ ok: false, message: "Seleccione un archivo." });
-    if (!DOC_TYPES.includes(file.type)) return setMsg({ ok: false, message: "Formato no permitido. Use PDF, JPG, PNG o WebP." });
+    if (!docType) return setMsg({ ok: false, message: t.pickType });
+    if (!file) return setMsg({ ok: false, message: t.pickFile });
+    if (!DOC_TYPES.includes(file.type)) return setMsg({ ok: false, message: t.badFormat });
     setUploading(true);
     try {
       let body: Blob = file;
@@ -37,10 +39,10 @@ export function DocumentManager({ propertyId, documents, live }: { propertyId: s
         mime = "image/webp";
         name = file.name.replace(/\.[^.]+$/, "") + ".webp";
       }
-      if (body.size > MAX_DOC_BYTES) throw new Error("El archivo supera 15 MB.");
+      if (body.size > MAX_DOC_BYTES) throw new Error(t.tooLarge);
       const path = `properties/${propertyId}/${safeFileName(name)}`;
       const up = await createClient().storage.from("private-docs").upload(path, body, { contentType: mime, upsert: false });
-      if (up.error) throw new Error("No se pudo subir el archivo. Intente de nuevo.");
+      if (up.error) throw new Error(t.uploadFailed);
       const r = await addDocument({ propertyId, docType, storagePath: path, fileName: name.slice(-200) });
       setMsg(r);
       if (r.ok) {
@@ -58,31 +60,31 @@ export function DocumentManager({ propertyId, documents, live }: { propertyId: s
 
   return (
     <section className="fieldset" aria-labelledby="docs-title">
-      <h3 id="docs-title" style={{ marginTop: 0 }}>Documentos del inmueble (privados)</h3>
+      <h3 id="docs-title" style={{ marginTop: 0 }}>{t.title}</h3>
       <p className="small muted">
-        Autorización de publicación, título, certificación del estado jurídico, planos, etc. Solo los ven usted, su organización autorizada y el personal de MAJ.
-        {live ? " Puede cargar documentos aunque la publicación esté activa; quedan pendientes de revisión." : ""}
+        {t.intro}
+        {live ? t.introLive : ""}
       </p>
       <div className="form-grid">
         <div className="field">
-          <label htmlFor="doc-type" className="required">Tipo de documento</label>
+          <label htmlFor="doc-type" className="required">{t.type}</label>
           <select id="doc-type" className="select" value={docType} onChange={(e) => setDocType(e.currentTarget.value as DocType)}>
-            <option value="">Seleccione…</option>
-            {Object.entries(DOC_TYPES_LABELS).map(([k, l]) => (
-              <option key={k} value={k}>{l}</option>
+            <option value="">{dict.editor.form.select}</option>
+            {Object.keys(DOC_TYPES_LABELS).map((k) => (
+              <option key={k} value={k}>{dict.editor.docTypes[k]}</option>
             ))}
           </select>
         </div>
         <div className="field">
-          <label htmlFor="doc-file" className="required">Archivo</label>
+          <label htmlFor="doc-file" className="required">{t.file}</label>
           <input ref={inputRef} id="doc-file" type="file" className="input" accept="application/pdf,image/jpeg,image/png,image/webp"
             onChange={(e) => setFile(e.currentTarget.files?.[0] ?? null)} aria-describedby="doc-file-hint" />
-          <span className="hint" id="doc-file-hint">PDF, JPG, PNG o WebP. Máximo 15 MB.</span>
+          <span className="hint" id="doc-file-hint">{t.fileHint}</span>
         </div>
       </div>
       <div style={{ marginTop: 10 }}>
         <button type="button" className="btn btn-outline" onClick={upload} disabled={uploading} aria-busy={uploading}>
-          {uploading ? "Cargando…" : "Cargar documento"}
+          {uploading ? t.uploading : t.upload}
         </button>
       </div>
       <div aria-live="polite">
@@ -92,20 +94,20 @@ export function DocumentManager({ propertyId, documents, live }: { propertyId: s
       {documents.length ? (
         <div className="table-wrap" style={{ marginTop: 14 }}>
           <table className="table">
-            <caption className="sr-only">Documentos cargados</caption>
+            <caption className="sr-only">{t.caption}</caption>
             <thead>
-              <tr><th scope="col">Documento</th><th scope="col">Archivo</th><th scope="col">Estado</th><th scope="col">Fecha</th><th scope="col"><span className="sr-only">Acciones</span></th></tr>
+              <tr><th scope="col">{t.document}</th><th scope="col">{t.file}</th><th scope="col">{t.status}</th><th scope="col">{t.date}</th><th scope="col"><span className="sr-only">{t.actions}</span></th></tr>
             </thead>
             <tbody>
               {documents.map((d) => (
                 <tr key={d.id}>
-                  <td>{DOC_TYPES_LABELS[d.doc_type] ?? d.doc_type}</td>
+                  <td>{dict.editor.docTypes[d.doc_type] ?? d.doc_type}</td>
                   <td>
                     <a href={`/panel/publicaciones/${propertyId}/documentos/${d.id}`} rel="noopener" target="_blank">{d.file_name}</a>
                     <span className="xs muted" style={{ display: "block" }}>{Math.max(1, Math.round(d.size_bytes / 1024))} KB</span>
                   </td>
                   <td>
-                    <span className={`badge ${REVIEW_BADGE[d.review_status]}`}>{REVIEW[d.review_status]}</span>
+                    <span className={`badge ${REVIEW_BADGE[d.review_status]}`}>{t.review[d.review_status]}</span>
                     {d.review_notes ? <span className="xs" style={{ display: "block", marginTop: 4 }}>{d.review_notes}</span> : null}
                   </td>
                   <td className="small">{formatDate(d.created_at)}</td>
@@ -113,13 +115,13 @@ export function DocumentManager({ propertyId, documents, live }: { propertyId: s
                     {d.review_status === "pendiente" ? (
                       <button type="button" className="btn btn-ghost btn-sm" disabled={busy}
                         onClick={() => {
-                          if (!confirm("¿Retirar este documento?")) return;
+                          if (!confirm(t.confirmWithdraw)) return;
                           startBusy(async () => {
                             const r = await deleteDocument({ propertyId, documentId: d.id });
                             setMsg(r);
                             if (r.ok) router.refresh();
                           });
-                        }}>Retirar</button>
+                        }}>{t.withdraw}</button>
                     ) : null}
                   </td>
                 </tr>
@@ -128,7 +130,7 @@ export function DocumentManager({ propertyId, documents, live }: { propertyId: s
           </table>
         </div>
       ) : (
-        <p className="small muted" style={{ marginTop: 12 }}>Aún no ha cargado documentos.</p>
+        <p className="small muted" style={{ marginTop: 12 }}>{t.none}</p>
       )}
     </section>
   );

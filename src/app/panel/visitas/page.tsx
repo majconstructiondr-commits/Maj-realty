@@ -3,13 +3,17 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
 import { bookingWindow } from "@/lib/panel/appointments";
-import { APPOINTMENT_KINDS, APPOINTMENT_STATUSES, label, statusBadge } from "@/lib/panel/labels";
+import { label, statusBadge } from "@/lib/panel/labels";
 import { getSiteSettings } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
 import { listingHref } from "@/components/property/ListingCard";
+import { fmt } from "@/i18n";
+import { getI18n } from "@/i18n/server";
 import { AppointmentActions } from "./AppointmentActions";
 
-export const metadata: Metadata = { title: "Visitas" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).d.panel.visits.meta };
+}
 
 type Appt = {
   id: string; kind: string; starts_at: string; ends_at: string; status: string; client_id: string | null; agent_id: string;
@@ -21,6 +25,8 @@ export default async function Page(props: PageProps<"/panel/visitas">) {
   const u = await requireUser("/panel/visitas");
   const supabase = await createClient();
   const s = await getSiteSettings();
+  const { d } = await getI18n();
+  const t = d.panel.visits;
   const { data, error } = await supabase
     .from("appointments")
     .select("id, kind, starts_at, ends_at, status, client_id, agent_id, property_id, request_id, client_notes, cancel_reason")
@@ -56,17 +62,17 @@ export default async function Page(props: PageProps<"/panel/visitas">) {
           <li key={a.id} className="card card-body">
             <div className="row-between">
               <div>
-                <strong>{formatDate(a.starts_at, true)}</strong> · {label(APPOINTMENT_KINDS, a.kind)}
+                <strong>{formatDate(a.starts_at, true)}</strong> · {label(d.status.appointmentKinds, a.kind)}
                 <div className="small">
-                  {p ? <Link href={listingHref(p)}>{p.title} ({p.code})</Link> : a.request_id ? <Link href={`/panel/solicitudes/${a.request_id}`}>Ver solicitud</Link> : null}
+                  {p ? <Link href={listingHref(p)}>{p.title} ({p.code})</Link> : a.request_id ? <Link href={`/panel/solicitudes/${a.request_id}`}>{d.panel.shared.viewRequest}</Link> : null}
                 </div>
                 <div className="xs muted">
-                  {isAgent ? `Usted es el asesor · Cliente: ${other ? names.get(other) ?? "—" : "—"}` : `Asesor: ${names.get(a.agent_id) ?? "Equipo MAJ"}`}
+                  {isAgent ? fmt(t.youAreAgent, { name: other ? names.get(other) ?? "—" : "—" }) : fmt(t.agent, { name: names.get(a.agent_id) ?? d.panel.shared.team })}
                 </div>
-                {a.client_notes ? <div className="xs">Notas: {a.client_notes}</div> : null}
-                {a.cancel_reason ? <div className="xs">Motivo de cancelación: {a.cancel_reason}</div> : null}
+                {a.client_notes ? <div className="xs">{fmt(t.notes, { notes: a.client_notes })}</div> : null}
+                {a.cancel_reason ? <div className="xs">{fmt(t.cancelReason, { reason: a.cancel_reason })}</div> : null}
               </div>
-              <span className={statusBadge(a.status)}>{label(APPOINTMENT_STATUSES, a.status)}</span>
+              <span className={statusBadge(a.status)}>{label(d.status.appointment, a.status)}</span>
             </div>
             <div style={{ marginTop: 10 }}>
               <AppointmentActions
@@ -89,24 +95,24 @@ export default async function Page(props: PageProps<"/panel/visitas">) {
 
   return (
     <div className="stack" style={{ paddingBottom: 32 }}>
-      <h1>Visitas</h1>
+      <h1>{t.title}</h1>
       {sp.aviso === "solicitada" ? (
-        <p className="alert alert-success" role="status">Solicitud de visita registrada. El asesor debe confirmarla; le avisaremos en sus notificaciones.</p>
+        <p className="alert alert-success" role="status">{t.requested}</p>
       ) : null}
-      <p className="small muted">Horarios en hora de Santo Domingo.</p>
-      {error ? <p className="alert alert-error" role="alert">No se pudieron cargar sus visitas.</p> : null}
+      <p className="small muted">{t.tz}</p>
+      {error ? <p className="alert alert-error" role="alert">{t.error}</p> : null}
       <section aria-labelledby="v-up">
-        <h2 id="v-up">Próximas</h2>
+        <h2 id="v-up">{t.upcoming}</h2>
         {upcoming.length ? renderList(upcoming) : (
           <div className="card empty">
-            <p>No tiene visitas próximas. Puede agendar una desde la ficha de un inmueble.</p>
-            <Link className="btn btn-primary" href="/venta">Ver inmuebles</Link>
+            <p>{t.empty}</p>
+            <Link className="btn btn-primary" href="/venta">{d.panel.shared.viewProperties}</Link>
           </div>
         )}
       </section>
       {history.length ? (
         <section aria-labelledby="v-hist">
-          <h2 id="v-hist">Historial</h2>
+          <h2 id="v-hist">{d.panel.shared.history}</h2>
           {renderList(history)}
         </section>
       ) : null}

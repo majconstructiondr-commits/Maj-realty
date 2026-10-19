@@ -4,6 +4,7 @@ import { FormMessage } from "@/components/forms/FormBits";
 import { idle, type ActionState } from "@/lib/action-state";
 import { createClient } from "@/lib/supabase/client";
 import { DOC_TYPES, IMAGE_TYPES, MAX_DOC_BYTES, MAX_IMAGE_BYTES, safeFileName } from "@/lib/upload";
+import { fmt, usePrivateI18n } from "@/i18n/client";
 
 type Action = (prev: ActionState, fd: FormData) => Promise<ActionState>;
 
@@ -13,7 +14,7 @@ type Action = (prev: ActionState, fd: FormData) => Promise<ActionState>;
  * mime_type y size_bytes además de los campos propios.
  */
 export function UploadForm({
-  action, bucket, prefix, children, submit = "Subir", kind = "doc", required = true, fileLabel = "Archivo",
+  action, bucket, prefix, children, submit, kind = "doc", required = true, fileLabel,
 }: {
   action: Action;
   bucket: "private-docs" | "public-assets";
@@ -29,6 +30,7 @@ export function UploadForm({
   const [uploading, setUploading] = useState(false);
   const ref = useRef<HTMLFormElement>(null);
   const fid = useId();
+  const t = usePrivateI18n().d.admin.common;
   const types = kind === "image" ? IMAGE_TYPES : DOC_TYPES;
   const max = kind === "image" ? MAX_IMAGE_BYTES : MAX_DOC_BYTES;
 
@@ -39,19 +41,19 @@ export function UploadForm({
     const file = fd.get("file");
     fd.delete("file");
     if (file instanceof File && file.size > 0) {
-      if (!types.includes(file.type)) return setState({ status: "error", message: "Formato no permitido." });
-      if (file.size > max) return setState({ status: "error", message: `El archivo supera ${Math.round(max / 1048576)} MB.` });
+      if (!types.includes(file.type)) return setState({ status: "error", message: t.badFormat });
+      if (file.size > max) return setState({ status: "error", message: fmt(t.fileTooLarge, { n: Math.round(max / 1048576) }) });
       setUploading(true);
       const path = `${prefix.replace(/\/$/, "")}/${safeFileName(file.name)}`;
       const { error } = await createClient().storage.from(bucket).upload(path, file, { contentType: file.type, upsert: false });
       setUploading(false);
-      if (error) return setState({ status: "error", message: "No se pudo subir el archivo. Verifique su sesión y permisos." });
+      if (error) return setState({ status: "error", message: t.uploadFailed });
       fd.set("storage_path", path);
       fd.set("file_name", file.name.slice(0, 200));
       fd.set("mime_type", file.type);
       fd.set("size_bytes", String(file.size));
     } else if (required) {
-      return setState({ status: "error", message: "Seleccione un archivo." });
+      return setState({ status: "error", message: t.pickFile });
     }
     start(async () => {
       const r = await action(idle, fd);
@@ -65,13 +67,13 @@ export function UploadForm({
     <form ref={ref} className="form" onSubmit={onSubmit}>
       {children}
       <div className="field">
-        <label htmlFor={fid} className={required ? "required" : undefined}>{fileLabel}</label>
+        <label htmlFor={fid} className={required ? "required" : undefined}>{fileLabel ?? t.file}</label>
         <input id={fid} className="input" type="file" name="file" accept={types.join(",")} required={required} />
-        <span className="hint">{kind === "image" ? "JPG, PNG o WebP" : "PDF, JPG, PNG o WebP"} · máx. {Math.round(max / 1048576)} MB</span>
+        <span className="hint">{fmt(kind === "image" ? t.imageHint : t.docHint, { n: Math.round(max / 1048576) })}</span>
       </div>
       <div className="row">
         <button type="submit" className="btn btn-primary" disabled={busy} aria-busy={busy}>
-          {uploading ? "Subiendo…" : pending ? "Guardando…" : submit}
+          {uploading ? t.uploading : pending ? t.saving : submit ?? t.upload}
         </button>
       </div>
       <FormMessage state={state} />

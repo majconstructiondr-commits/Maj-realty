@@ -5,8 +5,17 @@ import type { ActionState } from "@/lib/action-state";
 import { parseForm } from "@/lib/admin/form";
 import { parseSettingValue } from "@/lib/admin/settings";
 import { adminCtx, confirmRows, fail } from "@/lib/admin/server";
+import { localizeState } from "@/i18n";
+import { es } from "@/i18n/es";
+import { getLocale } from "@/i18n/server";
+
+// Mensajes en español desde el diccionario; las acciones exportadas los traducen al responder.
+const M = es.admin.msg;
 
 export async function saveSetting(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return localizeState(await saveSettingEs(_p, fd), await getLocale());
+}
+async function saveSettingEs(_p: ActionState, fd: FormData): Promise<ActionState> {
   const { supabase, user } = await adminCtx("/admin/configuracion");
   const f = parseForm(z.object({
     key: z.string().regex(/^[a-z0-9_.-]{2,80}$/),
@@ -22,5 +31,5 @@ export async function saveSetting(_p: ActionState, fd: FormData): Promise<Action
     .eq("key", f.data.key).select("key");
   revalidatePath("/admin/configuracion");
   revalidatePath("/", "layout");
-  return confirmRows(res, "Configuración guardada.");
+  return confirmRows(res, M.settingSaved);
 }

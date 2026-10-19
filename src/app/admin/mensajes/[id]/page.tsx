@@ -2,11 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { Badge, FileLink, PageHeader } from "@/components/admin/Bits";
-import { CONVERSATION_STATUSES, MESSAGE_REPORT_STATUSES } from "@/lib/admin/labels";
 import { isUuid } from "@/lib/admin/params";
 import { labelFor, staffCtx, userLabels } from "@/lib/admin/server";
 import { formatDate } from "@/lib/format";
 import { hideMessage, resolveMessageReport, setConversationStatus, staffReply, unhideMessage } from "../actions";
+import { fmt } from "@/i18n";
+import { getI18n } from "@/i18n/server";
 
 type Msg = {
   id: string; sender_id: string; body: string; attachment_path: string | null; attachment_name: string | null; hidden: boolean;
@@ -18,6 +19,8 @@ export default async function ConversationModeration(props: PageProps<"/admin/me
   const { id } = await props.params;
   if (!isUuid(id)) notFound();
   const { supabase, user } = await staffCtx(`/admin/mensajes/${id}`);
+  const i = (await getI18n()).d;
+  const t = i.admin.convs;
   const { data: conv } = await supabase.from("conversations").select("*, properties(code, title), service_requests(number)").eq("id", id).maybeSingle();
   if (!conv) notFound();
   const [msgs, parts] = await Promise.all([
@@ -36,40 +39,40 @@ export default async function ConversationModeration(props: PageProps<"/admin/me
 
   return (
     <>
-      <PageHeader title={c.subject} back={{ href: "/admin/mensajes", label: "Conversaciones" }}>
-        <Badge value={c.status} map={CONVERSATION_STATUSES} />
+      <PageHeader title={c.subject} back={{ href: "/admin/mensajes", label: t.back }}>
+        <Badge value={c.status} map={i.status.conversations} />
       </PageHeader>
       <p className="small">
-        {c.properties && <>Inmueble: <Link href={`/admin/inmuebles/${c.property_id}`}>{c.properties.code} · {c.properties.title}</Link> · </>}
-        {c.service_requests && <>Solicitud: <Link href={`/admin/solicitudes/${c.request_id}`}>{c.service_requests.number}</Link> · </>}
-        Participantes: {participants.map((p) => `${labelFor(people, p.user_id)} (${p.participant_role})`).join(", ")}
+        {c.properties && <>{t.propertyLabel} <Link href={`/admin/inmuebles/${c.property_id}`}>{c.properties.code} · {c.properties.title}</Link> · </>}
+        {c.service_requests && <>{t.requestLabel} <Link href={`/admin/solicitudes/${c.request_id}`}>{c.service_requests.number}</Link> · </>}
+        {t.participantsLabel} {participants.map((p) => `${labelFor(people, p.user_id)} (${p.participant_role})`).join(", ")}
       </p>
 
       <div className="grid-2">
         <section className="card card-body stack">
-          <h2>Mensajes</h2>
-          {messages.length === 0 && <p className="muted">Sin mensajes.</p>}
+          <h2>{t.messages}</h2>
+          {messages.length === 0 && <p className="muted">{t.noMessages}</p>}
           <div className="chat" style={{ maxHeight: "none" }}>
             {messages.map((m) => {
               const mr = reports.filter((r) => r.message_id === m.id);
               return (
                 <div key={m.id} className={`bubble${m.sender_id === user.id ? " mine" : ""}`} style={m.hidden ? { opacity: 0.7, border: "1px dashed var(--danger)" } : undefined}>
                   <div style={{ whiteSpace: "pre-wrap" }}>{m.body}</div>
-                  {m.attachment_path && <div className="small"><FileLink path={m.attachment_path}>{m.attachment_name ?? "Adjunto"}</FileLink></div>}
-                  <div className="meta">{labelFor(people, m.sender_id)} · {formatDate(m.created_at, true)}{mr.length ? ` · ${mr.length} reporte(s)` : ""}</div>
+                  {m.attachment_path && <div className="small"><FileLink path={m.attachment_path}>{m.attachment_name ?? t.attachment}</FileLink></div>}
+                  <div className="meta">{labelFor(people, m.sender_id)} · {formatDate(m.created_at, true)}{mr.length ? ` · ${fmt(t.reportsCount, { n: mr.length })}` : ""}</div>
                   {m.hidden ? (
                     <div className="small">
-                      <strong>Oculto</strong>: {m.hidden_reason} ({labelFor(people, m.hidden_by)})
-                      <ActionForm action={unhideMessage} submit="Volver a mostrar" buttonClass="btn btn-ghost btn-sm">
+                      <strong>{t.hidden}</strong>: {m.hidden_reason} ({labelFor(people, m.hidden_by)})
+                      <ActionForm action={unhideMessage} submit={t.unhide} buttonClass="btn btn-ghost btn-sm">
                         <input type="hidden" name="id" value={m.id} /><input type="hidden" name="conversation_id" value={id} />
                       </ActionForm>
                     </div>
                   ) : (
                     <details className="small">
-                      <summary>Ocultar</summary>
-                      <ActionForm action={hideMessage} submit="Ocultar mensaje" buttonClass="btn btn-danger btn-sm">
+                      <summary>{t.hide}</summary>
+                      <ActionForm action={hideMessage} submit={t.hideMessage} buttonClass="btn btn-danger btn-sm">
                         <input type="hidden" name="id" value={m.id} /><input type="hidden" name="conversation_id" value={id} />
-                        <input name="reason" className="input" required minLength={3} maxLength={2000} placeholder="Motivo" aria-label="Motivo para ocultar" />
+                        <input name="reason" className="input" required minLength={3} maxLength={2000} placeholder={t.reason} aria-label={t.hideReason} />
                       </ActionForm>
                     </details>
                   )}
@@ -78,33 +81,33 @@ export default async function ConversationModeration(props: PageProps<"/admin/me
             })}
           </div>
           {c.status === "abierta" && (
-            <ActionForm action={staffReply} submit="Enviar como personal MAJ" resetOnSuccess>
+            <ActionForm action={staffReply} submit={t.sendAsStaff} resetOnSuccess>
               <input type="hidden" name="conversation_id" value={id} />
-              <div className="field"><label htmlFor="rep">Responder</label><textarea id="rep" name="body" className="textarea" required maxLength={4000} /></div>
+              <div className="field"><label htmlFor="rep">{t.reply}</label><textarea id="rep" name="body" className="textarea" required maxLength={4000} /></div>
             </ActionForm>
           )}
         </section>
         <section className="card card-body stack">
-          <h2>Moderación</h2>
-          <ActionForm action={setConversationStatus} submit="Cambiar estado" buttonClass="btn btn-ghost btn-sm" inline>
+          <h2>{t.moderation}</h2>
+          <ActionForm action={setConversationStatus} submit={t.changeStatus} buttonClass="btn btn-ghost btn-sm" inline>
             <input type="hidden" name="id" value={id} />
-            <select name="status" className="select" aria-label="Estado" defaultValue={c.status} style={{ maxWidth: 200 }}>
-              {Object.entries(CONVERSATION_STATUSES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            <select name="status" className="select" aria-label={t.statusAria} defaultValue={c.status} style={{ maxWidth: 200 }}>
+              {Object.entries(i.status.conversations).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </ActionForm>
-          <h3>Reportes</h3>
-          {reports.length === 0 ? <p className="small muted">Sin reportes.</p> : reports.map((r) => (
+          <h3>{t.reports}</h3>
+          {reports.length === 0 ? <p className="small muted">{t.noReports}</p> : reports.map((r) => (
             <div key={r.id} className="box stack">
-              <div><Badge value={r.status} map={MESSAGE_REPORT_STATUSES} /> <span className="small">{formatDate(r.created_at, true)} · {labelFor(people, r.reporter_id)}</span></div>
-              <div className="small">Motivo: {r.reason}</div>
-              <div className="xs muted">Mensaje: “{messages.find((m) => m.id === r.message_id)?.body.slice(0, 140)}”</div>
+              <div><Badge value={r.status} map={i.status.messageReports} /> <span className="small">{formatDate(r.created_at, true)} · {labelFor(people, r.reporter_id)}</span></div>
+              <div className="small">{t.reasonLabel} {i.status.reportReasons[r.reason] ?? r.reason}</div>
+              <div className="xs muted">{t.messageLabel} “{messages.find((m) => m.id === r.message_id)?.body.slice(0, 140)}”</div>
               {r.status === "abierto" ? (
-                <ActionForm action={resolveMessageReport} submit="Cerrar reporte" buttonClass="btn btn-primary btn-sm">
+                <ActionForm action={resolveMessageReport} submit={t.closeReport} buttonClass="btn btn-primary btn-sm">
                   <input type="hidden" name="id" value={r.id} /><input type="hidden" name="back" value={back} />
-                  <select name="status" className="select" aria-label="Resultado" defaultValue="resuelto"><option value="resuelto">Resuelto</option><option value="descartado">Descartado</option></select>
-                  <input name="resolution" className="input" required minLength={3} maxLength={2000} placeholder="Resolución" aria-label="Resolución" />
+                  <select name="status" className="select" aria-label={t.result} defaultValue="resuelto"><option value="resuelto">{i.status.messageReports.resuelto}</option><option value="descartado">{i.status.messageReports.descartado}</option></select>
+                  <input name="resolution" className="input" required minLength={3} maxLength={2000} placeholder={t.resolution} aria-label={t.resolution} />
                 </ActionForm>
-              ) : <div className="small">Resolución: {r.resolution} ({labelFor(people, r.resolved_by)})</div>}
+              ) : <div className="small">{t.resolutionLabel} {r.resolution} ({labelFor(people, r.resolved_by)})</div>}
             </div>
           ))}
         </section>

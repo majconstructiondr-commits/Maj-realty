@@ -2,6 +2,10 @@ import Link from "next/link";
 import { labelOf, toneOf } from "@/lib/admin/labels";
 import { hrefWith, type SP } from "@/lib/admin/params";
 import { formatMoney, type Currency } from "@/lib/format";
+import { fmt } from "@/i18n";
+import { getI18n } from "@/i18n/server";
+
+// Componentes de servidor: los textos fijos salen del diccionario del idioma activo.
 
 export function Badge({ value, map }: { value: string | null | undefined; map?: Record<string, string> }) {
   const tone = toneOf(value);
@@ -9,18 +13,19 @@ export function Badge({ value, map }: { value: string | null | undefined; map?: 
   return <span className={cls}>{map ? labelOf(map, value) : value ?? "—"}</span>;
 }
 
-export function Pagination({ base, sp, page, total, pageSize }: { base: string; sp: SP; page: number; total: number; pageSize: number }) {
+export async function Pagination({ base, sp, page, total, pageSize }: { base: string; sp: SP; page: number; total: number; pageSize: number }) {
+  const t = (await getI18n()).d.admin.common;
   const pages = Math.max(1, Math.ceil(total / pageSize));
-  if (pages <= 1) return <p className="small muted">{total} resultado{total === 1 ? "" : "s"}</p>;
+  if (pages <= 1) return <p className="small muted">{total === 1 ? t.resultOne : fmt(t.results, { n: total })}</p>;
   const around = [...new Set([1, page - 2, page - 1, page, page + 1, page + 2, pages])].filter((p) => p >= 1 && p <= pages).sort((a, b) => a - b);
   return (
-    <nav className="pagination" aria-label="Paginación">
-      {page > 1 && <Link href={hrefWith(base, sp, { pagina: page - 1 })}>‹ Anterior</Link>}
+    <nav className="pagination" aria-label={t.pagination}>
+      {page > 1 && <Link href={hrefWith(base, sp, { pagina: page - 1 })}>{t.prev}</Link>}
       {around.map((p) =>
         p === page ? <span key={p} aria-current="page">{p}</span> : <Link key={p} href={hrefWith(base, sp, { pagina: p })}>{p}</Link>,
       )}
-      {page < pages && <Link href={hrefWith(base, sp, { pagina: page + 1 })}>Siguiente ›</Link>}
-      <span className="small muted" style={{ border: 0 }}>{total} resultados</span>
+      {page < pages && <Link href={hrefWith(base, sp, { pagina: page + 1 })}>{t.next}</Link>}
+      <span className="small muted" style={{ border: 0 }}>{fmt(t.results, { n: total })}</span>
     </nav>
   );
 }
@@ -48,9 +53,9 @@ export function FileLink({ path, children, bucket = "private-docs" }: { path: st
 }
 
 /** Importes agrupados por moneda (nunca se suman DOP y USD). */
-export function MoneyByCurrency({ totals, empty = "Sin importes" }: { totals: Partial<Record<Currency, number | string>>; empty?: string }) {
+export async function MoneyByCurrency({ totals, empty }: { totals: Partial<Record<Currency, number | string>>; empty?: string }) {
   const entries = (Object.entries(totals) as [Currency, number | string][]).filter(([, v]) => v !== undefined && v !== null);
-  if (!entries.length) return <span className="muted">{empty}</span>;
+  if (!entries.length) return <span className="muted">{empty ?? (await getI18n()).d.admin.common.noAmounts}</span>;
   return (
     <span className="stack" style={{ display: "grid", gap: 2 }}>
       {entries.map(([c, v]) => <span key={c}>{formatMoney(Number(v), c, { decimals: true })}</span>)}
@@ -59,11 +64,12 @@ export function MoneyByCurrency({ totals, empty = "Sin importes" }: { totals: Pa
 }
 
 /** Detalles JSON como cajas con etiqueta. */
-export function DetailBoxes({ data, labels = {} }: { data: Record<string, unknown>; labels?: Record<string, string> }) {
+export async function DetailBoxes({ data, labels = {} }: { data: Record<string, unknown>; labels?: Record<string, string> }) {
+  const t = (await getI18n()).d.admin.common;
   const entries = Object.entries(data ?? {}).filter(([, v]) => v !== null && v !== undefined && v !== "");
-  if (!entries.length) return <p className="muted small">Sin detalles adicionales.</p>;
+  if (!entries.length) return <p className="muted small">{t.noDetails}</p>;
   const show = (v: unknown) =>
-    typeof v === "boolean" ? (v ? "Sí" : "No") : Array.isArray(v) ? v.map((x) => labels[String(x)] ?? String(x)).join(", ") : typeof v === "object" ? JSON.stringify(v) : String(v);
+    typeof v === "boolean" ? (v ? t.yes : t.no) : Array.isArray(v) ? v.map((x) => labels[String(x)] ?? String(x)).join(", ") : typeof v === "object" ? JSON.stringify(v) : String(v);
   return (
     <div className="grid-3">
       {entries.map(([k, v]) => (
@@ -76,9 +82,10 @@ export function DetailBoxes({ data, labels = {} }: { data: Record<string, unknow
   );
 }
 
-export function SubNav({ items, current }: { items: { href: string; label: string }[]; current: string }) {
+export async function SubNav({ items, current }: { items: { href: string; label: string }[]; current: string }) {
+  const t = (await getI18n()).d.admin.common;
   return (
-    <nav aria-label="Secciones">
+    <nav aria-label={t.sections}>
       <ul className="stepper">
         {items.map((i) => (
           <li key={i.href}>

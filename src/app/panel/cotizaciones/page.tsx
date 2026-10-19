@@ -2,13 +2,18 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { formatDate, formatMoney, type Currency } from "@/lib/format";
-import { label, QUOTE_SERVICES, QUOTE_STATUSES, statusBadge } from "@/lib/panel/labels";
+import { label, statusBadge } from "@/lib/panel/labels";
 import { createClient } from "@/lib/supabase/server";
+import { getI18n } from "@/i18n/server";
 
-export const metadata: Metadata = { title: "Mis cotizaciones" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).d.panel.quotes.meta };
+}
 
 export default async function Page() {
   const u = await requireUser("/panel/cotizaciones");
+  const { d } = await getI18n();
+  const t = d.panel.quotes;
   const supabase = await createClient();
   const { data: quotes, error } = await supabase
     .from("quotes")
@@ -23,37 +28,37 @@ export default async function Page() {
 
   return (
     <div className="stack" style={{ paddingBottom: 32 }}>
-      <h1>Mis cotizaciones</h1>
-      {error ? <p className="alert alert-error" role="alert">No se pudieron cargar sus cotizaciones.</p> : null}
+      <h1>{t.title}</h1>
+      {error ? <p className="alert alert-error" role="alert">{t.error}</p> : null}
       {!error && !quotes?.length ? (
         <div className="card empty">
-          <p>Aún no tiene cotizaciones.</p>
-          <Link className="btn btn-primary" href="/cotizaciones">Solicitar una cotización</Link>
+          <p>{t.empty}</p>
+          <Link className="btn btn-primary" href="/cotizaciones">{t.request}</Link>
         </div>
       ) : null}
       {quotes?.length ? (
         <div className="table-wrap">
           <table className="table">
-            <caption className="sr-only">Cotizaciones</caption>
+            <caption className="sr-only">{t.caption}</caption>
             <thead>
               <tr>
-                <th scope="col">Número</th>
-                <th scope="col">Servicio</th>
-                <th scope="col">Total</th>
-                <th scope="col">Vigencia</th>
-                <th scope="col">Estado</th>
+                <th scope="col">{t.number}</th>
+                <th scope="col">{t.service}</th>
+                <th scope="col">{t.total}</th>
+                <th scope="col">{t.validity}</th>
+                <th scope="col">{t.status}</th>
               </tr>
             </thead>
             <tbody>
               {quotes.map((q) => {
-                const t = totalMap.get(q.id);
+                const tot = totalMap.get(q.id);
                 return (
                   <tr key={q.id}>
                     <td><Link href={`/panel/cotizaciones/${q.id}`}>{q.number}</Link><div className="xs muted">{q.title}</div></td>
-                    <td>{label(QUOTE_SERVICES, q.service)}</td>
-                    <td>{t ? formatMoney(t.total, q.currency as Currency, { decimals: true }) : "—"}</td>
+                    <td>{label(d.status.quoteServices, q.service)}</td>
+                    <td>{tot ? formatMoney(tot.total, q.currency as Currency, { decimals: true }) : "—"}</td>
                     <td>{q.valid_until ? formatDate(q.valid_until) : "—"}</td>
-                    <td><span className={statusBadge(q.status)}>{label(QUOTE_STATUSES, q.status)}</span></td>
+                    <td><span className={statusBadge(q.status)}>{label(d.status.clientQuote, q.status)}</span></td>
                   </tr>
                 );
               })}

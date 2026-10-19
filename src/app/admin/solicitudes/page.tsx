@@ -5,6 +5,7 @@ import { hrefWith, ilikeTerm, isUuid, oneOf, pageOf, sortOf, str, type SP } from
 import { labelFor, staffCtx, staffMembers, userLabels } from "@/lib/admin/server";
 import { addDays, localDayStartIso } from "@/lib/admin/time";
 import { formatDate } from "@/lib/format";
+import { getI18n } from "@/i18n/server";
 
 const BASE = "/admin/solicitudes";
 const SORTS = ["created_at", "updated_at", "next_action_at", "number"] as const;
@@ -19,6 +20,9 @@ type Row = {
 export default async function AdminRequests(props: PageProps<"/admin/solicitudes">) {
   const sp = (await props.searchParams) as SP;
   const { supabase, user } = await staffCtx(BASE);
+  const i = (await getI18n()).d;
+  const c = i.admin.common;
+  const t = i.admin.requests;
   const kind = oneOf(sp, "kind", Object.keys(REQUEST_KINDS));
   const status = oneOf(sp, "status", Object.keys(REQUEST_STATUSES));
   const stage = oneOf(sp, "stage", Object.keys(CRM_STAGES));
@@ -52,51 +56,51 @@ export default async function AdminRequests(props: PageProps<"/admin/solicitudes
 
   return (
     <>
-      <PageHeader title="Solicitudes y CRM">
-        <a className="btn btn-ghost btn-sm" href={exportHref}>Exportar CSV</a>
+      <PageHeader title={t.title}>
+        <a className="btn btn-ghost btn-sm" href={exportHref}>{c.exportCsv}</a>
       </PageHeader>
-      <p className="small muted">El envío de comunicaciones comerciales no se hace desde aquí. Use solo los canales que el cliente autorizó para atender su solicitud.</p>
+      <p className="small muted">{t.commsNote}</p>
 
       <form method="get" className="card card-body form-grid" style={{ marginBottom: 16 }} role="search">
-        <div className="field"><label htmlFor="f-q">Buscar</label><input id="f-q" name="q" className="input" defaultValue={str(sp, "q")} placeholder="Número, nombre, correo, teléfono" /></div>
-        <div className="field"><label htmlFor="f-kind">Tipo</label><select id="f-kind" name="kind" className="select" defaultValue={kind}><Options map={REQUEST_KINDS} empty="Todos" /></select></div>
-        <div className="field"><label htmlFor="f-status">Estado</label><select id="f-status" name="status" className="select" defaultValue={status}><Options map={REQUEST_STATUSES} empty="Todos" /></select></div>
-        <div className="field"><label htmlFor="f-stage">Etapa</label><select id="f-stage" name="stage" className="select" defaultValue={stage}><Options map={CRM_STAGES} empty="Todas" /></select></div>
+        <div className="field"><label htmlFor="f-q">{c.search}</label><input id="f-q" name="q" className="input" defaultValue={str(sp, "q")} placeholder={t.searchPlaceholder} /></div>
+        <div className="field"><label htmlFor="f-kind">{c.kind}</label><select id="f-kind" name="kind" className="select" defaultValue={kind}><Options map={i.status.requestKinds} empty={c.all} /></select></div>
+        <div className="field"><label htmlFor="f-status">{c.status}</label><select id="f-status" name="status" className="select" defaultValue={status}><Options map={i.status.requestStatuses} empty={c.all} /></select></div>
+        <div className="field"><label htmlFor="f-stage">{c.stage}</label><select id="f-stage" name="stage" className="select" defaultValue={stage}><Options map={i.status.crmStages} empty={c.allF} /></select></div>
         <div className="field">
-          <label htmlFor="f-as">Responsable</label>
+          <label htmlFor="f-as">{c.assignee}</label>
           <select id="f-as" name="asignado" className="select" defaultValue={asignado}>
-            <option value="">Todos</option><option value="yo">Asignadas a mí</option><option value="ninguno">Sin asignar</option>
+            <option value="">{c.all}</option><option value="yo">{t.mine}</option><option value="ninguno">{c.unassigned}</option>
             {staff.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
           </select>
         </div>
-        <div className="field"><label htmlFor="f-d">Desde</label><input id="f-d" type="date" name="desde" className="input" defaultValue={desde} /></div>
-        <div className="field"><label htmlFor="f-h">Hasta</label><input id="f-h" type="date" name="hasta" className="input" defaultValue={hasta} /></div>
-        <label className="check"><input type="checkbox" name="abiertas" value="1" defaultChecked={abiertas} /> Solo abiertas</label>
+        <div className="field"><label htmlFor="f-d">{c.from}</label><input id="f-d" type="date" name="desde" className="input" defaultValue={desde} /></div>
+        <div className="field"><label htmlFor="f-h">{c.to}</label><input id="f-h" type="date" name="hasta" className="input" defaultValue={hasta} /></div>
+        <label className="check"><input type="checkbox" name="abiertas" value="1" defaultChecked={abiertas} /> {t.onlyOpen}</label>
         <input type="hidden" name="orden" value={sort.raw} />
-        <div className="row"><button className="btn btn-primary" type="submit">Filtrar</button><Link href={BASE} className="btn btn-ghost">Limpiar</Link></div>
+        <div className="row"><button className="btn btn-primary" type="submit">{c.filter}</button><Link href={BASE} className="btn btn-ghost">{c.clear}</Link></div>
       </form>
 
-      {error && <p className="alert alert-error">No se pudo cargar la lista.</p>}
-      {rows.length === 0 ? <Empty>No hay solicitudes con esos filtros.</Empty> : (
+      {error && <p className="alert alert-error">{c.loadError}</p>}
+      {rows.length === 0 ? <Empty>{t.empty}</Empty> : (
         <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
-                <SortTh base={BASE} sp={sp} column="number" current={sort.raw}>Número</SortTh>
-                <th>Tipo</th><th>Contacto</th><th>Estado</th><th>Etapa</th><th>Responsable</th>
-                <SortTh base={BASE} sp={sp} column="next_action_at" current={sort.raw}>Próxima acción</SortTh>
-                <SortTh base={BASE} sp={sp} column="created_at" current={sort.raw}>Recibida</SortTh>
+                <SortTh base={BASE} sp={sp} column="number" current={sort.raw}>{c.number}</SortTh>
+                <th>{c.kind}</th><th>{c.contact}</th><th>{c.status}</th><th>{c.stage}</th><th>{c.assignee}</th>
+                <SortTh base={BASE} sp={sp} column="next_action_at" current={sort.raw}>{c.nextAction}</SortTh>
+                <SortTh base={BASE} sp={sp} column="created_at" current={sort.raw}>{t.received}</SortTh>
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id}>
                   <td><Link href={`${BASE}/${r.id}`}><strong>{r.number}</strong></Link>{r.is_demo && <> <span className="badge badge-demo">Demo</span></>}</td>
-                  <td className="small">{labelOf(REQUEST_KINDS, r.kind)}{r.property_ref && <div className="xs muted">{r.property_ref}</div>}</td>
+                  <td className="small">{labelOf(i.status.requestKinds, r.kind)}{r.property_ref && <div className="xs muted">{r.property_ref}</div>}</td>
                   <td className="small">{r.contact_name}<div className="xs muted">{r.contact_email ?? r.contact_phone}</div></td>
-                  <td><Badge value={r.status} map={REQUEST_STATUSES} /></td>
-                  <td><Badge value={r.stage} map={CRM_STAGES} /></td>
-                  <td className="small">{r.assigned_to ? labelFor(people, r.assigned_to) : <span className="badge badge-warning">Sin asignar</span>}</td>
+                  <td><Badge value={r.status} map={i.status.requestStatuses} /></td>
+                  <td><Badge value={r.stage} map={i.status.crmStages} /></td>
+                  <td className="small">{r.assigned_to ? labelFor(people, r.assigned_to) : <span className="badge badge-warning">{c.unassigned}</span>}</td>
                   <td className="small">{r.next_action ?? "—"}{r.next_action_at && <div className="xs muted">{formatDate(r.next_action_at, true)}</div>}</td>
                   <td className="small">{formatDate(r.created_at, true)}</td>
                 </tr>

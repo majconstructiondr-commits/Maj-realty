@@ -1,12 +1,14 @@
 "use client";
 import { useFormStatus } from "react-dom";
 import type { ActionState } from "@/lib/action-state";
+import { useI18n } from "@/i18n/client";
 
-export function SubmitButton({ children, pendingText = "Guardando…", className = "btn btn-primary" }: { children: React.ReactNode; pendingText?: string; className?: string }) {
+export function SubmitButton({ children, pendingText, className = "btn btn-primary" }: { children: React.ReactNode; pendingText?: string; className?: string }) {
   const { pending } = useFormStatus();
+  const { d } = useI18n();
   return (
     <button type="submit" className={className} disabled={pending} aria-busy={pending}>
-      {pending ? pendingText : children}
+      {pending ? (pendingText ?? d.common.saving) : children}
     </button>
   );
 }

@@ -1,7 +1,9 @@
 "use client";
+import { usePrivateI18n } from "@/i18n/client";
 
 /** Abre la ficha pública en una ventana del ancho de un teléfono (el sitio no permite iframes). */
 export function MobilePreview({ href }: { href: string }) {
+  const { d } = usePrivateI18n();
   return (
     <a
       href={href}
@@ -16,7 +18,7 @@ export function MobilePreview({ href }: { href: string }) {
         }
       }}
     >
-      Vista previa móvil
+      {d.admin.common.mobilePreview}
     </a>
   );
 }

@@ -4,6 +4,7 @@ import { toCsv, type CsvValue } from "@/lib/admin/csv";
 import { ilikeTerm, isUuid } from "@/lib/admin/params";
 import { localDay, localDayStartIso, addDays } from "@/lib/admin/time";
 import { createClient } from "@/lib/supabase/server";
+import { getI18n } from "@/i18n/server";
 
 // Exportación CSV para el personal (sesión verificada + MFA). Usa el cliente del usuario: RLS aplica.
 const MAX_ROWS = 5000;
@@ -20,6 +21,8 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/admin/export
   if (!(KINDS as readonly string[]).includes(kind)) return new Response("Tipo de exportación no válido", { status: 404, headers: NO_STORE });
   const q = req.nextUrl.searchParams;
   const supabase = await createClient();
+  // Encabezados en el idioma del personal; los valores salen tal como están en la base.
+  const H = (await getI18n()).d.admin.csv;
 
   let headers: string[] = [];
   let rows: CsvValue[][] = [];
@@ -44,7 +47,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/admin/export
       if (term) query = query.or(`number.ilike.%${term}%,contact_name.ilike.%${term}%,contact_email.ilike.%${term}%`);
       const res = await query;
       error = res.error;
-      headers = ["Número", "Fecha", "Tipo", "Estado", "Etapa", "Nombre", "Correo", "Teléfono", "Canal", "Referencia inmueble", "Origen", "Responsable (id)", "Próxima acción", "Fecha próxima acción", "Acepta comunicaciones"];
+      headers = [...H.requests];
       rows = ((res.data ?? []) as Row[]).map((r) => [
         r.number, r.created_at, r.kind, r.status, r.stage, r.contact_name, r.contact_email, r.contact_phone, r.preferred_channel,
         r.property_ref, r.source, r.assigned_to, r.next_action, r.next_action_at, r.marketing_consent,
@@ -62,7 +65,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/admin/export
       if (term) query = query.or(`code.ilike.%${term}%,title.ilike.%${term}%,sector.ilike.%${term}%`);
       const res = await query;
       error = res.error;
-      headers = ["Código", "Título", "Estado", "Operación", "Tipo", "Provincia", "Municipio", "Sector", "Publicación MAJ", "Demostración", "Titular (id)", "Publicado", "Creado", "Documentos revisados", "Precio venta", "Moneda venta", "Precio renta", "Moneda renta"];
+      headers = [...H.properties];
       rows = ((res.data ?? []) as Row[]).map((r) => {
         const prices = (r.property_prices ?? []) as Row[];
         const sale = prices.find((p) => p.operation === "venta");
@@ -84,7 +87,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/admin/export
       if (q.get("status")) query = query.eq("status", q.get("status")!);
       const res = await query;
       error = res.error;
-      headers = ["Código", "Estado", "Plan", "Titular (id usuario)", "Organización", "Inicio", "Fin", "Cuota activa", "Miembros", "Motivo de estado", "Creada"];
+      headers = [...H.licenses];
       rows = ((res.data ?? []) as Row[]).map((r) => {
         const plan = r.plans as Row | null;
         const org = r.organizations as Row | null;
@@ -105,7 +108,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/admin/export
       if (q.get("moneda") === "DOP" || q.get("moneda") === "USD") query = query.eq("currency", q.get("moneda")!);
       const res = await query;
       error = res.error;
-      headers = ["Fecha", "Período", "Inmueble", "Tipo", "Dirección", "Monto", "Moneda", "Estado", "Descripción", "Unidad", "Motivo de anulación"];
+      headers = [...H.movements];
       rows = ((res.data ?? []) as Row[]).map((r) => {
         const c = r.management_contracts as Row | null;
         return [r.movement_date, r.period, c?.property_label, r.kind, r.direction, r.amount, r.currency, r.status, r.description, r.unit_label, r.void_reason] as CsvValue[];

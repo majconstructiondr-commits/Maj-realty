@@ -1,4 +1,6 @@
-import { STATUSES, type ListingStatus } from "@/lib/catalog/definitions";
+// Componentes de servidor: toman las etiquetas del diccionario del idioma activo.
+import type { ListingStatus } from "@/lib/catalog/definitions";
+import { getI18n } from "@/i18n/server";
 
 const CLS: Record<ListingStatus, string> = {
   borrador: "badge",
@@ -12,26 +14,27 @@ const CLS: Record<ListingStatus, string> = {
   archivado: "badge",
 };
 
-export function StatusBadge({ status }: { status: ListingStatus }) {
-  return <span className={CLS[status] ?? "badge"}>{STATUSES[status] ?? status}</span>;
+export async function StatusBadge({ status }: { status: ListingStatus }) {
+  const { d } = await getI18n();
+  return <span className={CLS[status] ?? "badge"}>{d.status.listing[status] ?? status}</span>;
 }
 
-const GENERIC: Record<string, { label: string; cls: string }> = {
-  pendiente: { label: "Pendiente", cls: "badge badge-warning" },
-  documentos_requeridos: { label: "Documentos requeridos", cls: "badge badge-warning" },
-  aprobada: { label: "Aprobada", cls: "badge badge-success" },
-  aprobado: { label: "Aprobado", cls: "badge badge-success" },
-  rechazada: { label: "Rechazada", cls: "badge badge-danger" },
-  rechazado: { label: "Rechazado", cls: "badge badge-danger" },
-  retirado: { label: "Reemplazada", cls: "badge" },
-  activa: { label: "Activa", cls: "badge badge-success" },
-  vencida: { label: "Vencida", cls: "badge badge-danger" },
-  suspendida: { label: "Suspendida", cls: "badge badge-danger" },
-  cancelada: { label: "Cancelada", cls: "badge" },
+const GENERIC: Record<string, string> = {
+  pendiente: "badge badge-warning",
+  documentos_requeridos: "badge badge-warning",
+  aprobada: "badge badge-success",
+  aprobado: "badge badge-success",
+  rechazada: "badge badge-danger",
+  rechazado: "badge badge-danger",
+  retirado: "badge",
+  activa: "badge badge-success",
+  vencida: "badge badge-danger",
+  suspendida: "badge badge-danger",
+  cancelada: "badge",
 };
 
 /** Insignia para solicitudes, licencias, pagos y organizaciones. */
-export function StateBadge({ value }: { value: string }) {
-  const g = GENERIC[value] ?? { label: value, cls: "badge" };
-  return <span className={g.cls}>{g.label}</span>;
+export async function StateBadge({ value }: { value: string }) {
+  const { d } = await getI18n();
+  return <span className={GENERIC[value] ?? "badge"}>{d.editor.badges[value] ?? value}</span>;
 }

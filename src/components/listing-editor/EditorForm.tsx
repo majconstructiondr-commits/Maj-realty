@@ -5,6 +5,7 @@ import { startTransition, useActionState, useEffect, useRef, type ReactNode } fr
 import { saveStep } from "@/app/panel/publicaciones/editor-actions";
 import { FormMessage } from "@/components/forms/FormBits";
 import { idle, type ActionState } from "@/lib/action-state";
+import { usePrivateI18n } from "@/i18n/client";
 import type { Errors } from "./fields";
 
 export function EditorForm({
@@ -17,6 +18,7 @@ export function EditorForm({
   children: (errors: Errors) => ReactNode;
 }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(saveStep, idle);
+  const t = usePrivateI18n().d.editor.form;
   const msgRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (state.status !== "idle") msgRef.current?.focus();
@@ -48,17 +50,17 @@ export function EditorForm({
       </div>
       <div className="row le-actions">
         <button type="submit" className="btn btn-ghost" disabled={pending} aria-busy={pending}>
-          {pending ? "Guardando…" : live ? "Enviar cambios a revisión" : "Guardar borrador"}
+          {pending ? t.saving : live ? t.sendChanges : t.saveDraft}
         </button>
         {!isLast ? (
           <button type="submit" name="_continuar" value="1" className="btn btn-primary" disabled={pending}>
-            {live ? "Enviar cambios y continuar" : "Guardar y continuar"}
+            {live ? t.sendAndContinue : t.saveAndContinue}
           </button>
         ) : null}
       </div>
       {live ? (
         <p className="xs muted" style={{ margin: 0 }}>
-          Esta publicación ya está activa: sus cambios se envían como solicitud y la versión publicada se mantiene hasta que MAJ los apruebe.
+          {t.liveNote}
         </p>
       ) : null}
     </form>

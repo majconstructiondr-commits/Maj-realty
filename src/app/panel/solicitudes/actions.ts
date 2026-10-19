@@ -5,14 +5,23 @@ import { z } from "zod";
 import type { ActionState } from "@/lib/action-state";
 import { actionContext, NO_SESSION } from "@/lib/panel/server";
 import { dbErrorMessage } from "@/lib/security";
+import { localizeState } from "@/i18n";
+import { es } from "@/i18n/es";
+import { getLocale } from "@/i18n/server";
+
+// Mensajes en español desde el diccionario; las acciones los traducen al responder.
+const M = es.panel.msg;
 
 const commentSchema = z.object({
   request_id: z.uuid(),
-  body: z.string().trim().min(1, "Escriba su comentario").max(4000, "Máximo 4000 caracteres"),
+  body: z.string().trim().min(1, M.commentEmpty).max(4000, M.max4000),
 });
 
 /** Comentario visible para el equipo y el cliente (nunca privado desde el panel del cliente). */
 export async function addRequestComment(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return localizeState(await addRequestCommentEs(_p, fd), await getLocale());
+}
+async function addRequestCommentEs(_p: ActionState, fd: FormData): Promise<ActionState> {
   const ctx = await actionContext();
   if (!ctx) return NO_SESSION;
   const parsed = commentSchema.safeParse({ request_id: fd.get("request_id"), body: fd.get("body") });
@@ -20,17 +29,20 @@ export async function addRequestComment(_p: ActionState, fd: FormData): Promise<
   const { error } = await ctx.supabase.rpc("add_request_note", { p_request: parsed.data.request_id, p_body: parsed.data.body, p_private: false });
   if (error) return { status: "error", message: dbErrorMessage(error) };
   revalidatePath(`/panel/solicitudes/${parsed.data.request_id}`);
-  return { status: "ok", message: "Comentario agregado al historial." };
+  return { status: "ok", message: M.commentOk };
 }
 
 /** Abre (o reutiliza) la conversación de la solicitud y lleva al chat. */
 export async function startRequestChat(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return localizeState(await startRequestChatEs(_p, fd), await getLocale());
+}
+async function startRequestChatEs(_p: ActionState, fd: FormData): Promise<ActionState> {
   const ctx = await actionContext();
   if (!ctx) return NO_SESSION;
   const id = z.uuid().safeParse(fd.get("request_id"));
-  if (!id.success) return { status: "error", message: "Solicitud no válida." };
+  if (!id.success) return { status: "error", message: M.requestInvalid };
   const { data: req } = await ctx.supabase.from("service_requests").select("number").eq("id", id.data).maybeSingle();
-  if (!req) return { status: "error", message: "Solicitud no encontrada." };
+  if (!req) return { status: "error", message: M.requestNotFound };
   const { data, error } = await ctx.supabase.rpc("start_conversation", {
     p_property: null,
     p_request: id.data,

@@ -12,6 +12,12 @@ import { isStaffRole } from "@/lib/auth";
 import { newDraftSchema, zodFieldErrors } from "@/lib/listing-editor/schemas";
 import { canCreateListings, getSellerContext, memberCan, type SellerContext } from "@/lib/listing-editor/server";
 import { DUPLICATE_COLUMNS, QUICK_ACTIONS, duplicateTitle, type QuickAction } from "@/lib/listing-editor/transitions";
+import { fmt, localizeMessage, localizeState } from "@/i18n";
+import { es } from "@/i18n/es";
+import { getI18n, getLocale } from "@/i18n/server";
+
+// Mensajes en español desde el diccionario; las acciones exportadas los traducen al responder.
+const M = es.editor.msg;
 
 // Lo que publica el personal de MAJ a su nombre es publicación de MAJ: no consume licencia.
 // La base solo acepta la marca con sesión de dos pasos (is_staff exige aal2).
@@ -19,14 +25,17 @@ const isMajListing = (ctx: SellerContext, orgId: unknown) =>
   !orgId && isStaffRole(ctx.user) && ctx.user.aal === "aal2";
 
 export async function createDraft(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  if (!hasSupabase) return { status: "error", message: "Modo demostración: la base de datos no está configurada." };
+  return localizeState(await createDraftEs(_prev, fd), await getLocale());
+}
+async function createDraftEs(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  if (!hasSupabase) return { status: "error", message: M.demoDb };
   const ctx = await getSellerContext();
-  if (!ctx) return { status: "error", message: "Su sesión expiró. Inicie sesión de nuevo." };
-  if (!canCreateListings(ctx)) return { status: "error", message: "Su cuenta aún no está habilitada para publicar. Solicítelo en “Quiero publicar”." };
+  if (!ctx) return { status: "error", message: M.sessionExpired };
+  if (!canCreateListings(ctx)) return { status: "error", message: M.notEnabled };
   const r = newDraftSchema.safeParse(formToObject(fd));
-  if (!r.success) return { status: "error", message: "Revise los campos marcados.", errors: zodFieldErrors(r.error) };
+  if (!r.success) return { status: "error", message: M.reviewFields, errors: zodFieldErrors(r.error) };
   if (r.data.organization_id && !ctx.memberships.some((m) => m.organization_id === r.data.organization_id && memberCan(m, "publish"))) {
-    return { status: "error", message: "No tiene permiso para publicar en esa organización.", errors: { organization_id: "Sin permiso" } };
+    return { status: "error", message: M.orgForbidden, errors: { organization_id: M.noPermission } };
   }
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -42,22 +51,26 @@ export async function createDraft(_prev: ActionState, fd: FormData): Promise<Act
 const quickSchema = z.object({
   property_id: z.uuid(),
   op: z.enum(["duplicar", "eliminar", ...(Object.keys(QUICK_ACTIONS) as QuickAction[])]),
-  reason: z.preprocess((v) => (typeof v === "string" && v.trim() ? v.trim() : null), z.string().max(300, "Máximo 300 caracteres").nullable()),
+  reason: z.preprocess((v) => (typeof v === "string" && v.trim() ? v.trim() : null), z.string().max(300, M.max300).nullable()),
 });
 
 export async function quickAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  if (!hasSupabase) return { status: "error", message: "Modo demostración." };
+  return localizeState(await quickActionEs(_prev, fd), await getLocale());
+}
+async function quickActionEs(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  if (!hasSupabase) return { status: "error", message: M.demo };
   const ctx = await getSellerContext();
-  if (!ctx) return { status: "error", message: "Su sesión expiró. Inicie sesión de nuevo." };
+  if (!ctx) return { status: "error", message: M.sessionExpired };
   const r = quickSchema.safeParse(formToObject(fd));
-  if (!r.success) return { status: "error", message: "Acción no válida." };
+  if (!r.success) return { status: "error", message: M.actionInvalid };
   const { property_id: id, op, reason } = r.data;
   const supabase = await createClient();
   const { data: prop } = await supabase.from("properties").select("*").eq("id", id).maybeSingle();
-  if (!prop) return { status: "error", message: "Publicación no encontrada." };
+  if (!prop) return { status: "error", message: M.listingNotFound };
 
   if (op === "duplicar") {
-    if (!canCreateListings(ctx)) return { status: "error", message: "Su cuenta no está habilitada para publicar." };
+    const { d, locale } = await getI18n();
+    if (!canCreateListings(ctx)) return { status: "error", message: M.notEnabledShort };
     const copy: Record<string, unknown> = Object.fromEntries(DUPLICATE_COLUMNS.map((k) => [k, prop[k]]));
     if (copy.organization_id && !ctx.memberships.some((m) => m.organization_id === copy.organization_id && memberCan(m, "publish"))) {
       copy.organization_id = null;
@@ -78,7 +91,7 @@ export async function quickAction(_prev: ActionState, fd: FormData): Promise<Act
       const ins = await supabase.from("property_prices").insert(rows).select("id");
       if (ins.error || (ins.data?.length ?? 0) !== rows.length) {
         revalidatePath("/panel/publicaciones");
-        return { status: "error", message: `Se creó el borrador, pero no se copiaron los precios: ${dbErrorMessage(ins.error)}` };
+        return { status: "error", message: fmt(d.editor.msg.pricesNotCopied, { error: localizeMessage(dbErrorMessage(ins.error), locale) }) };
       }
     }
     revalidatePath("/panel/publicaciones");
@@ -86,36 +99,36 @@ export async function quickAction(_prev: ActionState, fd: FormData): Promise<Act
   }
 
   if (op === "eliminar") {
-    if (prop.status !== "borrador" || prop.first_published_at) return { status: "error", message: "Solo se eliminan borradores que nunca se publicaron. Puede archivarla." };
+    if (prop.status !== "borrador" || prop.first_published_at) return { status: "error", message: M.deleteDraftsOnly };
     const { data, error } = await supabase.from("properties").delete().eq("id", id).select("id");
     if (error) return { status: "error", message: dbErrorMessage(error) };
-    if (!data?.length) return { status: "error", message: "No se pudo eliminar (solo el titular puede eliminar sus borradores)." };
+    if (!data?.length) return { status: "error", message: M.deleteFailed };
     revalidatePath("/panel/publicaciones");
-    return { status: "ok", message: "Borrador eliminado." };
+    return { status: "ok", message: M.draftDeleted };
   }
 
   const def = QUICK_ACTIONS[op as QuickAction];
   if (!(def.from as readonly string[]).includes(prop.status)) {
-    return { status: "error", message: "Esa acción no está disponible en el estado actual de la publicación." };
+    return { status: "error", message: M.actionUnavailable };
   }
   const patch: Record<string, unknown> = { status: def.to };
   if (op === "pausar") patch.pause_reason = reason ?? "Pausada por el anunciante";
   const { data, error } = await supabase.from("properties").update(patch).eq("id", id).select("id, status");
   if (error) return { status: "error", message: dbErrorMessage(error) };
-  if (!data?.length || data[0].status !== def.to) return { status: "error", message: "No tiene permiso para cambiar el estado de esta publicación." };
+  if (!data?.length || data[0].status !== def.to) return { status: "error", message: M.statusForbidden };
   revalidatePath("/panel/publicaciones");
   revalidatePath(`/panel/publicaciones/${id}/editar`);
   const msgs: Partial<Record<QuickAction, string>> = {
-    enviar: "Enviada a revisión. MAJ la revisará antes de publicarla.",
-    reenviar: "Reenviada a revisión.",
-    retirar: "Retirada de revisión: volvió a borrador.",
-    pausar: "Publicación pausada: ya no se muestra al público.",
-    reservar: "Marcada como reservada.",
-    quitar_reserva: "Reserva retirada: vuelve a mostrarse como disponible.",
-    vendido: "Marcada como vendida.",
-    rentado: "Marcada como rentada.",
-    archivar: "Publicación archivada.",
-    volver_borrador: "Volvió a borrador.",
+    enviar: M.sentToReview,
+    reenviar: M.resent,
+    retirar: M.withdrawn,
+    pausar: M.paused,
+    reservar: M.reserved,
+    quitar_reserva: M.unreserved,
+    vendido: M.sold,
+    rentado: M.rented,
+    archivar: M.archived,
+    volver_borrador: M.backToDraft,
   };
-  return { status: "ok", message: msgs[op as QuickAction] ?? "Estado actualizado." };
+  return { status: "ok", message: msgs[op as QuickAction] ?? M.statusUpdated };
 }

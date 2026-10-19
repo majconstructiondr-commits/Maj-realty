@@ -52,11 +52,14 @@ export function timeSlots(hours: BusinessHours, date: string, durationMinutes: n
   return out;
 }
 
-/** Texto legible del horario semanal, empezando por el lunes. */
-export function describeHours(hours: BusinessHours): { day: string; hours: string }[] {
+/** Texto legible del horario semanal, empezando por el lunes (días y "Cerrado" del idioma activo). */
+export function describeHours(
+  hours: BusinessHours,
+  t: { weekdays: readonly string[]; closed: string } = { weekdays: WEEKDAYS, closed: "Cerrado" },
+): { day: string; hours: string }[] {
   return [1, 2, 3, 4, 5, 6, 0].map((wd) => {
     const h = hoursForWeekday(hours, wd);
-    return { day: WEEKDAYS[wd], hours: h ? `${h[0]} – ${h[1]}` : "Cerrado" };
+    return { day: t.weekdays[wd], hours: h ? `${h[0]} – ${h[1]}` : t.closed };
   });
 }
 

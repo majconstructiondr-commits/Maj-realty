@@ -5,6 +5,13 @@ import { staffCtx } from "@/lib/admin/server";
 import { fetchRemoteImage } from "@/lib/import/fetch-image";
 import { importRowSchema, normalizeSource, type ImportRow } from "@/lib/import/listings";
 import { dbErrorMessage } from "@/lib/security";
+import { fmt, localizeMessage } from "@/i18n";
+import { importMsgEs } from "@/i18n/sections/import-msg";
+import { getLocale } from "@/i18n/server";
+
+// Mensajes en español; importListingRow los traduce al idioma activo al responder.
+const M = importMsgEs.msg;
+const T = importMsgEs.tpl;
 
 export type ImportResult =
   | { status: "ok"; id: string; code: string; photos: number; photoErrors: string[] }
@@ -12,19 +19,27 @@ export type ImportResult =
   | { status: "error"; message: string };
 
 const optionsSchema = z.object({
-  source: z.string().trim().min(2, "Indique la empresa de origen").max(120),
-  authorized: z.literal(true, { error: "Confirme que tiene autorización escrita de la empresa" }),
+  source: z.string().trim().min(2, M.sourceRequired).max(120),
+  authorized: z.literal(true, { error: M.authRequired }),
 });
 
 const todayDR = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Santo_Domingo" });
 
 /** Crea un inmueble importado (borrador de MAJ) con precios, datos de origen y fotos descargadas de sus enlaces. */
 export async function importListingRow(input: { row: ImportRow; source: string; authorized: boolean }): Promise<ImportResult> {
+  const r = await importListingRowEs(input);
+  const locale = await getLocale();
+  if (r.status === "error") return { ...r, message: localizeMessage(r.message, locale) };
+  if (r.status === "ok") return { ...r, photoErrors: r.photoErrors.map((e) => localizeMessage(e, locale)) };
+  return r;
+}
+
+async function importListingRowEs(input: { row: ImportRow; source: string; authorized: boolean }): Promise<ImportResult> {
   const { supabase, user } = await staffCtx("/admin/inmuebles/importar");
   const opts = optionsSchema.safeParse({ source: input.source, authorized: input.authorized });
-  if (!opts.success) return { status: "error", message: opts.error.issues[0]?.message ?? "Datos no válidos." };
+  if (!opts.success) return { status: "error", message: opts.error.issues[0]?.message ?? M.invalidData };
   const parsed = importRowSchema.safeParse(input.row);
-  if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message ?? "Fila no válida." };
+  if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message ?? M.invalidRow };
   const row = parsed.data;
   const source = normalizeSource(opts.data.source);
   const ref = row.referencia || null;
@@ -68,7 +83,7 @@ export async function importListingRow(input: { row: ImportRow; source: string; 
   const problems: string[] = [];
   if (prices.length) {
     const { error: e } = await supabase.from("property_prices").insert(prices);
-    if (e) problems.push(`Precio no guardado: ${dbErrorMessage(e)}`);
+    if (e) problems.push(fmt(T.priceNotSaved, { msg: dbErrorMessage(e) }));
   }
 
   const today = todayDR();
@@ -78,7 +93,7 @@ export async function importListingRow(input: { row: ImportRow; source: string; 
     authorization_date: today,
     staff_notes: `Importado de «${opts.data.source}»${ref ? ` (referencia ${ref})` : ""} el ${today} por ${user.email}. Autorización escrita de la empresa confirmada al importar.`,
   }).eq("property_id", id).select("property_id");
-  if (privErr) problems.push(`Datos de origen no guardados: ${dbErrorMessage(privErr)}`);
+  if (privErr) problems.push(fmt(T.sourceNotSaved, { msg: dbErrorMessage(privErr) }));
 
   // Fotos: descarga de 4 en 4 y se guardan en el orden del archivo.
   const results: ({ path: string } | { error: string })[] = new Array(row.fotos.length);
@@ -89,10 +104,10 @@ export async function importListingRow(input: { row: ImportRow; source: string; 
         const img = await fetchRemoteImage(url);
         const path = `properties/${id}/importada-${String(n + 1).padStart(2, "0")}-${crypto.randomUUID()}.${img.ext}`;
         const up = await supabase.storage.from("property-media").upload(path, img.bytes, { contentType: img.contentType, upsert: false });
-        if (up.error) throw new Error("No se pudo guardar");
+        if (up.error) throw new Error(M.notSaved);
         results[n] = { path };
       } catch (e) {
-        results[n] = { error: `Foto ${n + 1}: ${(e as Error).message}` };
+        results[n] = { error: fmt(T.photo, { n: n + 1, msg: (e as Error).message }) };
       }
     }));
   }
@@ -107,14 +122,14 @@ export async function importListingRow(input: { row: ImportRow; source: string; 
     if (mErr) {
       await supabase.storage.from("property-media").remove(saved);
       photos = 0;
-      photoErrors.push(`Fotos no registradas: ${dbErrorMessage(mErr)}`);
+      photoErrors.push(fmt(T.photosNotSaved, { msg: dbErrorMessage(mErr) }));
     }
   }
   if (row.video) {
     const { error: vErr } = await supabase.from("property_media").insert({
       property_id: id, kind: "video", external_url: row.video, alt_text: `Video de ${row.titulo}`.slice(0, 200), sort_order: saved.length, created_by: user.id,
     });
-    if (vErr) photoErrors.push(`Video no guardado: ${dbErrorMessage(vErr)}`);
+    if (vErr) photoErrors.push(fmt(T.videoNotSaved, { msg: dbErrorMessage(vErr) }));
   }
 
   revalidatePath("/admin/inmuebles");

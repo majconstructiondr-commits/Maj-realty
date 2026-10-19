@@ -5,6 +5,12 @@ import { z } from "zod";
 import type { ActionState } from "@/lib/action-state";
 import { actionContext, NO_SESSION } from "@/lib/panel/server";
 import { dbErrorMessage, rateLimit } from "@/lib/security";
+import { localizeState } from "@/i18n";
+import { es } from "@/i18n/es";
+import { getLocale } from "@/i18n/server";
+
+// Mensajes en español desde el diccionario; las acciones los traducen al responder.
+const M = es.panel.msg;
 
 const MIMES = ["application/pdf", "image/jpeg", "image/png", "image/webp"] as const;
 const opt = (v: FormDataEntryValue | null) => (typeof v === "string" && v !== "" ? v : undefined);
@@ -12,21 +18,24 @@ const opt = (v: FormDataEntryValue | null) => (typeof v === "string" && v !== ""
 const sendSchema = z
   .object({
     conversation_id: z.uuid(),
-    body: z.string().trim().max(4000, "Máximo 4000 caracteres").default(""),
-    attachment_path: z.string().max(300).regex(/^[A-Za-z0-9._/-]+$/, "Adjunto no válido").optional(),
+    body: z.string().trim().max(4000, M.max4000).default(""),
+    attachment_path: z.string().max(300).regex(/^[A-Za-z0-9._/-]+$/, M.attachmentInvalid).optional(),
     attachment_name: z.string().trim().min(1).max(200).optional(),
     attachment_mime: z.enum(MIMES).optional(),
   })
-  .refine((d) => d.body.length > 0 || d.attachment_path, { message: "Escriba un mensaje", path: ["body"] })
+  .refine((d) => d.body.length > 0 || d.attachment_path, { message: M.writeMessage, path: ["body"] })
   .refine((d) => !d.attachment_path || (d.attachment_path.startsWith(`conversations/${d.conversation_id}/`) && !d.attachment_path.includes("..") && d.attachment_name && d.attachment_mime), {
-    message: "Adjunto no válido",
+    message: M.attachmentInvalid,
     path: ["attachment_path"],
   });
 
 export async function sendMessage(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return localizeState(await sendMessageEs(_p, fd), await getLocale());
+}
+async function sendMessageEs(_p: ActionState, fd: FormData): Promise<ActionState> {
   const ctx = await actionContext();
   if (!ctx) return NO_SESSION;
-  if (!rateLimit(`msg:${ctx.userId}`, 30, 60 * 1000)) return { status: "error", message: "Está enviando mensajes muy rápido. Espere un momento." };
+  if (!rateLimit(`msg:${ctx.userId}`, 30, 60 * 1000)) return { status: "error", message: M.tooFast };
   const parsed = sendSchema.safeParse({
     conversation_id: fd.get("conversation_id"),
     body: opt(fd.get("body")),
@@ -54,7 +63,7 @@ export async function sendMessage(_p: ActionState, fd: FormData): Promise<Action
   if (error || !data) return { status: "error", message: dbErrorMessage(error) };
   revalidatePath(`/panel/mensajes/${d.conversation_id}`);
   revalidatePath("/panel/mensajes");
-  return { status: "ok", message: "Mensaje enviado.", id: data.id };
+  return { status: "ok", message: M.messageOk, id: data.id };
 }
 
 export async function markConversationRead(conversationId: string) {
@@ -66,32 +75,38 @@ export async function markConversationRead(conversationId: string) {
 
 const reportSchema = z.object({
   message_id: z.uuid(),
-  reason: z.string().trim().min(3, "Explique brevemente el motivo (mínimo 3 caracteres)").max(1000, "Máximo 1000 caracteres"),
+  reason: z.string().trim().min(3, M.reportReason).max(1000, M.max1000),
 });
 
 export async function reportMessage(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return localizeState(await reportMessageEs(_p, fd), await getLocale());
+}
+async function reportMessageEs(_p: ActionState, fd: FormData): Promise<ActionState> {
   const ctx = await actionContext();
   if (!ctx) return NO_SESSION;
   const parsed = reportSchema.safeParse({ message_id: fd.get("message_id"), reason: fd.get("reason") });
   if (!parsed.success) return { status: "error", message: parsed.error.issues[0].message };
   const { error } = await ctx.supabase.from("message_reports").insert({ ...parsed.data, reporter_id: ctx.userId });
   if (error) {
-    if (error.code === "23505") return { status: "error", message: "Ya reportó este mensaje. El equipo de MAJ lo está revisando." };
+    if (error.code === "23505") return { status: "error", message: M.reportDuplicate };
     return { status: "error", message: dbErrorMessage(error) };
   }
-  return { status: "ok", message: "Reporte enviado. El equipo de MAJ lo revisará." };
+  return { status: "ok", message: M.reportOk };
 }
 
 const startSchema = z.object({
   property_id: z.uuid(),
-  subject: z.string().trim().min(2, "Indique un asunto").max(160, "Máximo 160 caracteres"),
-  body: z.string().trim().min(1, "Escriba su mensaje").max(4000, "Máximo 4000 caracteres"),
+  subject: z.string().trim().min(2, M.subject).max(160, M.max160),
+  body: z.string().trim().min(1, M.writeYourMessage).max(4000, M.max4000),
 });
 
 export async function startPropertyConversation(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return localizeState(await startPropertyConversationEs(_p, fd), await getLocale());
+}
+async function startPropertyConversationEs(_p: ActionState, fd: FormData): Promise<ActionState> {
   const ctx = await actionContext();
   if (!ctx) return NO_SESSION;
-  if (!rateLimit(`conv:${ctx.userId}`, 10, 60 * 60 * 1000)) return { status: "error", message: "Demasiadas conversaciones nuevas. Intente más tarde." };
+  if (!rateLimit(`conv:${ctx.userId}`, 10, 60 * 60 * 1000)) return { status: "error", message: M.tooManyConversations };
   const parsed = startSchema.safeParse({ property_id: fd.get("property_id"), subject: fd.get("subject"), body: fd.get("body") });
   if (!parsed.success) {
     const i = parsed.error.issues[0];

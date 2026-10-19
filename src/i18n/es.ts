@@ -1,10 +1,16 @@
-// Textos de la interfaz pública en español (idioma por defecto).
+// Textos de la interfaz en español (idioma por defecto). Las secciones del área privada
+// (cuenta, panel, editor, panel MAJ y estados) están en sections/, con su traducción al lado.
 // en.ts debe tener exactamente la misma estructura (lo comprueba TypeScript y tests/unit/i18n.test.ts).
 // No se traducen contenidos de la base de datos (publicaciones, configuración, contenido del panel).
 import {
   CHANNELS, CONDITIONS, FEATURES, NUMERIC_FIELDS, OPERATIONS, PROPERTY_TYPES, SPACE_FIELDS, TRI,
   type NumericField, type Operation, type PropertyType, type SpaceField, type Tri,
 } from "@/lib/catalog/definitions";
+import { account } from "./sections/account";
+import { admin } from "./sections/admin";
+import { editor } from "./sections/editor";
+import { panel } from "./sections/panel";
+import { status } from "./sections/status";
 
 type Labels<K extends string> = Record<K, string>;
 const labelsOf = <K extends string>(o: Record<K, string>): Labels<K> => ({ ...o });
@@ -613,9 +619,22 @@ export const es = {
     retry: "Intentar de nuevo",
   },
   legal: {
-    // Los documentos legales solo existen en español; en inglés se muestra este aviso.
+    // En inglés se muestra una traducción de referencia con este aviso (rige la versión en español).
     note: "",
+    // Para documentos reemplazados desde el panel (contenido de la base de datos, solo en español).
+    spanishOnly: "",
+    meta: "Documentos legales",
+    title: "Documentos legales",
+    draftsWarning: "Borradores pendientes de revisión por un abogado dominicano. No están aprobados jurídicamente.",
+    back: "← Documentos legales",
+    draftNote: "Borrador ({v}) sujeto a revisión de abogado dominicano. No está aprobado jurídicamente.",
+    notFound: "Documento no encontrado",
   },
+  account: account.es,
+  panel: panel.es,
+  editor: editor.es,
+  admin: admin.es,
+  status: status.es,
 };
 
 /** Estructura que debe cumplir cada idioma (cadenas, no literales). */

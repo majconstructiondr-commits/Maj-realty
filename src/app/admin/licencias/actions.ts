@@ -6,25 +6,34 @@ import type { ActionState } from "@/lib/action-state";
 import { parseForm, zBool, zDate, zOptText, zOptUuid, zReason, zUuid } from "@/lib/admin/form";
 import { confirmRows, fail, findUserByEmail, staffCtx } from "@/lib/admin/server";
 import { addDays, localDayStartIso } from "@/lib/admin/time";
+import { localizeState } from "@/i18n";
+import { es } from "@/i18n/es";
+import { getLocale } from "@/i18n/server";
+
+// Mensajes en español desde el diccionario; las acciones exportadas los traducen al responder.
+const M = es.admin.msg;
 
 const path = (id: string) => `/admin/licencias/${id}`;
 
 export async function createLicense(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return localizeState(await createLicenseEs(_p, fd), await getLocale());
+}
+async function createLicenseEs(_p: ActionState, fd: FormData): Promise<ActionState> {
   const { supabase } = await staffCtx("/admin/licencias");
   const f = parseForm(z.object({
-    holder_email: z.preprocess((v) => (v === "" ? undefined : v), z.email("Correo no válido").optional()),
+    holder_email: z.preprocess((v) => (v === "" ? undefined : v), z.email(M.invalidEmail).optional()),
     organization_id: zOptUuid,
     plan_id: zUuid,
     starts_on: zDate,
     activate: zBool,
   }).refine((d) => Boolean(d.holder_email) !== Boolean(d.organization_id), {
-    message: "Indique un usuario (correo) o una organización, no ambos", path: ["holder_email"],
+    message: M.userOrOrg, path: ["holder_email"],
   }), fd);
   if (!f.ok) return f.state;
   const { data: plan } = await supabase.from("plans").select("id, holder_type, duration_days, active_listing_quota, max_members, permissions").eq("id", f.data.plan_id).maybeSingle();
-  if (!plan) return fail("Plan no encontrado.");
-  if (plan.holder_type === "organizacion" && !f.data.organization_id) return fail("Este plan es para organizaciones.");
-  if (plan.holder_type === "individual" && !f.data.holder_email) return fail("Este plan es individual: indique el correo del titular.");
+  if (!plan) return fail(M.planNotFound);
+  if (plan.holder_type === "organizacion" && !f.data.organization_id) return fail(M.planForOrgs);
+  if (plan.holder_type === "individual" && !f.data.holder_email) return fail(M.planIndividual);
   let holder: string | null = null;
   if (f.data.holder_email) {
     const r = await findUserByEmail(supabase, f.data.holder_email);
@@ -49,9 +58,12 @@ export async function createLicense(_p: ActionState, fd: FormData): Promise<Acti
 }
 
 export async function activateLicense(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return localizeState(await activateLicenseEs(_p, fd), await getLocale());
+}
+async function activateLicenseEs(_p: ActionState, fd: FormData): Promise<ActionState> {
   const { supabase } = await staffCtx("/admin/licencias");
   const f = parseForm(z.object({ id: zUuid, starts_on: zDate, ends_on: zDate, refresh_quota: zBool })
-    .refine((d) => d.ends_on > d.starts_on, { message: "El fin debe ser posterior al inicio", path: ["ends_on"] }), fd);
+    .refine((d) => d.ends_on > d.starts_on, { message: M.endAfterStartShort, path: ["ends_on"] }), fd);
   if (!f.ok) return f.state;
   const patch: Record<string, unknown> = {
     status: "activa", starts_at: localDayStartIso(f.data.starts_on), ends_at: localDayStartIso(f.data.ends_on), status_reason: null,
@@ -64,28 +76,34 @@ export async function activateLicense(_p: ActionState, fd: FormData): Promise<Ac
   }
   const res = await supabase.from("licenses").update(patch).eq("id", f.data.id).in("status", ["pendiente", "suspendida", "vencida", "activa"]).select("id");
   revalidatePath(path(f.data.id));
-  return confirmRows(res, "Licencia activa con las fechas indicadas. Las publicaciones pausadas deben enviarse de nuevo a revisión.");
+  return confirmRows(res, M.licenseActivated);
 }
 
 export async function changeLicenseStatus(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return localizeState(await changeLicenseStatusEs(_p, fd), await getLocale());
+}
+async function changeLicenseStatusEs(_p: ActionState, fd: FormData): Promise<ActionState> {
   const { supabase } = await staffCtx("/admin/licencias");
-  const f = parseForm(z.object({ id: zUuid, status: z.enum(["suspendida", "cancelada"], { error: "Estado no válido" }), reason: zReason }), fd);
+  const f = parseForm(z.object({ id: zUuid, status: z.enum(["suspendida", "cancelada"], { error: M.invalidStatus }), reason: zReason }), fd);
   if (!f.ok) return f.state;
   const res = await supabase.from("licenses").update({ status: f.data.status, status_reason: f.data.reason })
     .eq("id", f.data.id).neq("status", "cancelada").select("id");
   revalidatePath(path(f.data.id));
-  return confirmRows(res, f.data.status === "suspendida" ? "Licencia suspendida. Sus publicaciones activas quedaron pausadas." : "Licencia cancelada. Sus publicaciones activas quedaron pausadas.");
+  return confirmRows(res, f.data.status === "suspendida" ? M.licenseSuspended : M.licenseCancelled);
 }
 
 export async function reviewLicensePayment(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return localizeState(await reviewLicensePaymentEs(_p, fd), await getLocale());
+}
+async function reviewLicensePaymentEs(_p: ActionState, fd: FormData): Promise<ActionState> {
   const { supabase } = await staffCtx("/admin/licencias");
   const f = parseForm(z.object({
     id: zUuid, license_id: zUuid, decision: z.enum(["aprobado", "rechazado"]), reason: zOptText(2000),
-  }).refine((d) => d.decision === "aprobado" || Boolean(d.reason && d.reason.length >= 3), { message: "Indique el motivo del rechazo", path: ["reason"] }), fd);
+  }).refine((d) => d.decision === "aprobado" || Boolean(d.reason && d.reason.length >= 3), { message: M.rejectReason, path: ["reason"] }), fd);
   if (!f.ok) return f.state;
   const res = await supabase.from("license_payments").update({ status: f.data.decision, review_reason: f.data.reason ?? null })
     .eq("id", f.data.id).eq("license_id", f.data.license_id).eq("status", "pendiente").select("id");
   revalidatePath(path(f.data.license_id));
   revalidatePath("/admin/licencias");
-  return confirmRows(res, f.data.decision === "aprobado" ? "Pago aprobado. Si corresponde, active o renueve la licencia." : "Pago rechazado con motivo.");
+  return confirmRows(res, f.data.decision === "aprobado" ? M.paymentApproved : M.paymentRejected);
 }

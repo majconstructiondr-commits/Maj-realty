@@ -15,6 +15,12 @@ import {
   privateSchema, zodFieldErrors, asksTitleInfo, TITLE_INFO_FIELDS, DOC_TYPES_LABELS, type ChangeSet, type PriceRow,
 } from "@/lib/listing-editor/schemas";
 import type { EditorPrice, EditorProperty } from "@/lib/listing-editor/types";
+import { localizeResult, localizeState } from "@/i18n";
+import { es } from "@/i18n/es";
+import { getLocale } from "@/i18n/server";
+
+// Mensajes en español desde el diccionario; las acciones exportadas los traducen al responder.
+const M = es.editor.msg;
 
 type Supa = Awaited<ReturnType<typeof createClient>>;
 export type SimpleResult = { ok: true; message: string } | { ok: false; message: string };
@@ -27,16 +33,16 @@ const PRICE_COLS = [
 
 /** Sesión + publicación visible + permiso de edición (comprobado en la base de datos). */
 async function authorize(propertyId: unknown) {
-  if (!hasSupabase) return { error: "Modo demostración: la base de datos no está configurada." } as const;
+  if (!hasSupabase) return { error: M.demoDb } as const;
   const id = z.uuid().safeParse(propertyId);
-  if (!id.success) return { error: "Publicación no válida." } as const;
+  if (!id.success) return { error: M.listingInvalid } as const;
   const user = await getSessionUser();
-  if (!user) return { error: "Su sesión expiró. Inicie sesión de nuevo." } as const;
+  if (!user) return { error: M.sessionExpired } as const;
   const supabase = await createClient();
   const { data: property } = await supabase.from("properties").select("*").eq("id", id.data).maybeSingle();
-  if (!property) return { error: "Publicación no encontrada." } as const;
+  if (!property) return { error: M.listingNotFound } as const;
   const { data: canEdit } = await supabase.rpc("property_access", { p_property: id.data, p_level: "edit" });
-  if (canEdit !== true) return { error: "No tiene permiso para editar esta publicación." } as const;
+  if (canEdit !== true) return { error: M.noEditPermission } as const;
   return { supabase, user, property: property as EditorProperty, id: id.data } as const;
 }
 
@@ -46,14 +52,14 @@ const toPriceRow = (p: EditorPrice): PriceRow =>
 async function updateProperty(supabase: Supa, id: string, patch: Record<string, unknown>) {
   const { data, error } = await supabase.from("properties").update(patch).eq("id", id).select("id");
   if (error) return dbErrorMessage(error);
-  if (!data?.length) return "No se guardaron los cambios (sin permiso o publicación no disponible).";
+  if (!data?.length) return M.notSaved;
   return null;
 }
 
 async function updatePrivate(supabase: Supa, id: string, patch: Record<string, unknown>) {
   const { data, error } = await supabase.from("property_private").update(patch).eq("property_id", id).select("property_id");
   if (error) return dbErrorMessage(error);
-  if (!data?.length) return "No se guardaron los datos privados (sin permiso).";
+  if (!data?.length) return M.privateNotSaved;
   return null;
 }
 
@@ -67,7 +73,7 @@ async function replacePrices(supabase: Supa, id: string, rows: PriceRow[], opera
     .upsert(rows.map((r) => ({ ...r, property_id: id })), { onConflict: "property_id,operation" })
     .select("id");
   if (error) return dbErrorMessage(error);
-  if ((data?.length ?? 0) !== rows.length) return "No se guardaron todos los precios.";
+  if ((data?.length ?? 0) !== rows.length) return M.pricesNotSaved;
   return null;
 }
 
@@ -95,23 +101,26 @@ async function requestChange(
   });
   if (!set) {
     return pending
-      ? { status: "ok", message: "Sus cambios en esta sección coinciden con la versión publicada. Su solicitud pendiente anterior se mantiene sin cambios." }
-      : { status: "ok", message: "No hay cambios respecto a la versión publicada." };
+      ? { status: "ok", message: M.sameAsPublishedPending }
+      : { status: "ok", message: M.sameAsPublished };
   }
   const { data, error } = await supabase.rpc("submit_property_change", { p_property: id, p_changes: set });
   if (error) return { status: "error", message: dbErrorMessage(error) };
-  if (!data) return { status: "error", message: "No se pudo registrar la solicitud de cambio." };
+  if (!data) return { status: "error", message: M.changeFailed };
   return {
     status: "ok",
     id: String(data),
-    message: "Solicitud de cambio enviada a MAJ. La versión publicada se mantiene hasta que MAJ apruebe los cambios.",
+    message: M.changeSent,
   };
 }
 
 /** Guarda un paso del editor (borrador) o lo convierte en solicitud de cambio (publicación activa). */
 export async function saveStep(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  return localizeState(await saveStepEs(_prev, fd), await getLocale());
+}
+async function saveStepEs(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const auth = await authorize(fd.get("property_id"));
-  if ("error" in auth) return { status: "error", message: auth.error ?? "No autorizado." };
+  if ("error" in auth) return { status: "error", message: auth.error ?? M.notAuthorized };
   const { supabase, property, id } = auth;
   const step = Number(fd.get("step"));
   const goNext = fd.get("_continuar") === "1";
@@ -121,7 +130,7 @@ export async function saveStep(_prev: ActionState, fd: FormData): Promise<Action
 
   const invalid = (errors: Record<string, string>): ActionState => ({
     status: "error",
-    message: "Revise los campos marcados.",
+    message: M.reviewFields,
     errors,
   });
 
@@ -133,7 +142,7 @@ export async function saveStep(_prev: ActionState, fd: FormData): Promise<Action
       if (!live) {
         const err = (await updateProperty(supabase, id, { ...rest, available_from }))
           ?? (rest.operation !== property.operation ? await replacePrices(supabase, id, [], rest.operation) : null);
-        result = err ? { status: "error", message: err } : { status: "ok", message: "Borrador guardado." };
+        result = err ? { status: "error", message: err } : { status: "ok", message: M.draftSaved };
         break;
       }
       // La fecha de disponibilidad se actualiza directamente; el resto requiere revisión.
@@ -156,7 +165,7 @@ export async function saveStep(_prev: ActionState, fd: FormData): Promise<Action
       if (!r.success) return invalid(zodFieldErrors(r.error));
       if (!live) {
         const err = (await updateProperty(supabase, id, r.data.property)) ?? (await updatePrivate(supabase, id, r.data.private));
-        result = err ? { status: "error", message: err } : { status: "ok", message: "Borrador guardado." };
+        result = err ? { status: "error", message: err } : { status: "ok", message: M.draftSaved };
       } else {
         result = await requestChange(supabase, property, { property: r.data.property, private: r.data.private });
       }
@@ -168,7 +177,7 @@ export async function saveStep(_prev: ActionState, fd: FormData): Promise<Action
       if (!r.ok) return invalid(r.errors);
       if (!live) {
         const err = await replacePrices(supabase, id, r.rows, operation);
-        result = err ? { status: "error", message: err } : { status: "ok", message: "Precios guardados en el borrador." };
+        result = err ? { status: "error", message: err } : { status: "ok", message: M.pricesSaved };
       } else {
         result = await requestChange(supabase, property, { prices: r.rows });
       }
@@ -179,7 +188,7 @@ export async function saveStep(_prev: ActionState, fd: FormData): Promise<Action
       if (!r.ok) return invalid(r.errors);
       if (!live) {
         const err = await updateProperty(supabase, id, r.data);
-        result = err ? { status: "error", message: err } : { status: "ok", message: "Borrador guardado." };
+        result = err ? { status: "error", message: err } : { status: "ok", message: M.draftSaved };
       } else {
         result = await requestChange(supabase, property, { property: r.data });
       }
@@ -190,7 +199,7 @@ export async function saveStep(_prev: ActionState, fd: FormData): Promise<Action
       if (!r.ok) return invalid(r.errors);
       if (!live) {
         const err = await updateProperty(supabase, id, r.data);
-        result = err ? { status: "error", message: err } : { status: "ok", message: "Borrador guardado." };
+        result = err ? { status: "error", message: err } : { status: "ok", message: M.draftSaved };
       } else {
         result = await requestChange(supabase, property, { property: r.data });
       }
@@ -203,14 +212,14 @@ export async function saveStep(_prev: ActionState, fd: FormData): Promise<Action
       if (!asksTitleInfo(property.property_type)) for (const k of TITLE_INFO_FIELDS) delete (r.data as Record<string, unknown>)[k];
       if (!live) {
         const err = await updatePrivate(supabase, id, r.data);
-        result = err ? { status: "error", message: err } : { status: "ok", message: "Datos privados guardados." };
+        result = err ? { status: "error", message: err } : { status: "ok", message: M.privateSaved };
       } else {
         result = await requestChange(supabase, property, { private: r.data });
       }
       break;
     }
     default:
-      return { status: "error", message: "Paso no válido." };
+      return { status: "error", message: M.stepInvalid };
   }
 
   if (result.status === "ok") {
@@ -232,18 +241,21 @@ async function pendingOperation(supabase: Supa, id: string) {
 // Envío a revisión
 // ---------------------------------------------------------------------
 export async function submitForReview(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  return localizeState(await submitForReviewEs(_prev, fd), await getLocale());
+}
+async function submitForReviewEs(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const auth = await authorize(fd.get("property_id"));
-  if ("error" in auth) return { status: "error", message: auth.error ?? "No autorizado." };
+  if ("error" in auth) return { status: "error", message: auth.error ?? M.notAuthorized };
   const { supabase, property, id } = auth;
   if (!["borrador", "rechazado", "pausado"].includes(property.status)) {
-    return { status: "error", message: "Esta publicación no se puede enviar a revisión en su estado actual." };
+    return { status: "error", message: M.cannotSubmit };
   }
   if (fd.get("confirm") !== "on") {
-    return { status: "error", message: "Confirme que la información es veraz y que cuenta con la autorización del propietario.", errors: { confirm: "Debe confirmar para enviar" } };
+    return { status: "error", message: M.confirmTruth, errors: { confirm: M.mustConfirm } };
   }
   const { data, error } = await supabase.from("properties").update({ status: "en_revision" }).eq("id", id).select("id, code, status");
   if (error) return { status: "error", message: dbErrorMessage(error) };
-  if (!data?.length || data[0].status !== "en_revision") return { status: "error", message: "No se pudo enviar a revisión." };
+  if (!data?.length || data[0].status !== "en_revision") return { status: "error", message: M.submitFailed };
   revalidatePath("/panel/publicaciones");
   revalidatePath(editorPath(id));
   redirect(`/panel/publicaciones?enviado=${encodeURIComponent(data[0].code)}`);
@@ -269,22 +281,25 @@ const photoSchema = z.object({
   storagePath: z.string().max(300),
   width: z.number().int().min(1).max(20000),
   height: z.number().int().min(1).max(20000),
-  altText: z.string().trim().min(3, "Describa la imagen (mínimo 3 caracteres)").max(200, "Máximo 200 caracteres"),
+  altText: z.string().trim().min(3, M.altMin).max(200, M.max200),
 });
 
 export async function addPhoto(input: z.input<typeof photoSchema>): Promise<SimpleResult> {
+  return localizeResult(await addPhotoEs(input), await getLocale());
+}
+async function addPhotoEs(input: z.input<typeof photoSchema>): Promise<SimpleResult> {
   const r = photoSchema.safeParse(input);
-  if (!r.success) return { ok: false, message: r.error.issues[0]?.message ?? "Datos no válidos." };
+  if (!r.success) return { ok: false, message: r.error.issues[0]?.message ?? M.dataInvalid };
   const auth = await authorize(r.data.propertyId);
-  if ("error" in auth) return { ok: false, message: auth.error ?? "No autorizado." };
+  if ("error" in auth) return { ok: false, message: auth.error ?? M.notAuthorized };
   const { supabase, id } = auth;
   const prefix = `properties/${id}/`;
   const name = r.data.storagePath.slice(prefix.length);
   if (!r.data.storagePath.startsWith(prefix) || !fileNameRe.test(name) || !/\.(webp|jpe?g|png)$/i.test(name)) {
-    return { ok: false, message: "Ruta de archivo no válida. Solo se aceptan imágenes (los PDF van en documentos)." };
+    return { ok: false, message: M.imagePathInvalid };
   }
   if (!(await objectExists(supabase, "property-media", r.data.storagePath))) {
-    return { ok: false, message: "No se encontró la imagen cargada. Intente de nuevo." };
+    return { ok: false, message: M.imageNotFound };
   }
   const { data: last } = await supabase.from("property_media").select("sort_order").eq("property_id", id).order("sort_order", { ascending: false }).limit(1);
   const { count: covers } = await supabase.from("property_media").select("id", { count: "exact", head: true }).eq("property_id", id).eq("is_cover", true);
@@ -303,12 +318,12 @@ export async function addPhoto(input: z.input<typeof photoSchema>): Promise<Simp
     .select("id");
   if (error || !data?.length) return { ok: false, message: dbErrorMessage(error) };
   revalidatePath(editorPath(id));
-  return { ok: true, message: "Imagen agregada." };
+  return { ok: true, message: M.imageAdded };
 }
 
 const externalSchema = z.object({
   property_id: z.uuid(),
-  kind: z.enum(["video", "recorrido"], { error: "Seleccione video o recorrido virtual" }),
+  kind: z.enum(["video", "recorrido"], { error: M.linkKind }),
   external_url: z
     .string()
     .trim()
@@ -319,15 +334,18 @@ const externalSchema = z.object({
       } catch {
         return false;
       }
-    }, "Indique un enlace que empiece por https://"),
-  alt_text: z.string().trim().min(3, "Describa el video o recorrido (mínimo 3 caracteres)").max(200),
+    }, M.httpsLink),
+  alt_text: z.string().trim().min(3, M.linkAltMin).max(200),
 });
 
 export async function addExternalMedia(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  return localizeState(await addExternalMediaEs(_prev, fd), await getLocale());
+}
+async function addExternalMediaEs(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const r = externalSchema.safeParse(formToObject(fd));
-  if (!r.success) return { status: "error", message: "Revise los campos marcados.", errors: zodFieldErrors(r.error) };
+  if (!r.success) return { status: "error", message: M.reviewFields, errors: zodFieldErrors(r.error) };
   const auth = await authorize(r.data.property_id);
-  if ("error" in auth) return { status: "error", message: auth.error ?? "No autorizado." };
+  if ("error" in auth) return { status: "error", message: auth.error ?? M.notAuthorized };
   const { supabase, id } = auth;
   const { data: last } = await supabase.from("property_media").select("sort_order").eq("property_id", id).order("sort_order", { ascending: false }).limit(1);
   const { data, error } = await supabase
@@ -336,22 +354,25 @@ export async function addExternalMedia(_prev: ActionState, fd: FormData): Promis
     .select("id");
   if (error || !data?.length) return { status: "error", message: dbErrorMessage(error) };
   revalidatePath(editorPath(id));
-  return { status: "ok", message: "Enlace agregado." };
+  return { status: "ok", message: M.linkAdded };
 }
 
 const mediaRef = z.object({ propertyId: z.uuid(), mediaId: z.uuid() });
 
 export async function moveMedia(input: { propertyId: string; mediaId: string; direction: "up" | "down" }): Promise<SimpleResult> {
+  return localizeResult(await moveMediaEs(input), await getLocale());
+}
+async function moveMediaEs(input: { propertyId: string; mediaId: string; direction: "up" | "down" }): Promise<SimpleResult> {
   const r = mediaRef.safeParse(input);
-  if (!r.success || (input.direction !== "up" && input.direction !== "down")) return { ok: false, message: "Datos no válidos." };
+  if (!r.success || (input.direction !== "up" && input.direction !== "down")) return { ok: false, message: M.dataInvalid };
   const auth = await authorize(r.data.propertyId);
-  if ("error" in auth) return { ok: false, message: auth.error ?? "No autorizado." };
+  if ("error" in auth) return { ok: false, message: auth.error ?? M.notAuthorized };
   const { supabase, id } = auth;
   const { data: rows } = await supabase.from("property_media").select("id, sort_order").eq("property_id", id).order("sort_order").order("created_at");
   const list = (rows ?? []) as { id: string; sort_order: number }[];
   const i = list.findIndex((m) => m.id === r.data.mediaId);
   const j = input.direction === "up" ? i - 1 : i + 1;
-  if (i < 0 || j < 0 || j >= list.length) return { ok: false, message: "No se puede mover en esa dirección." };
+  if (i < 0 || j < 0 || j >= list.length) return { ok: false, message: M.cannotMove };
   [list[i], list[j]] = [list[j], list[i]];
   for (let k = 0; k < list.length; k++) {
     if (list[k].sort_order === k) continue;
@@ -359,38 +380,44 @@ export async function moveMedia(input: { propertyId: string; mediaId: string; di
     if (error || !data?.length) return { ok: false, message: dbErrorMessage(error) };
   }
   revalidatePath(editorPath(id));
-  return { ok: true, message: "Orden actualizado." };
+  return { ok: true, message: M.orderUpdated };
 }
 
 export async function setCover(input: { propertyId: string; mediaId: string }): Promise<SimpleResult> {
+  return localizeResult(await setCoverEs(input), await getLocale());
+}
+async function setCoverEs(input: { propertyId: string; mediaId: string }): Promise<SimpleResult> {
   const r = mediaRef.safeParse(input);
-  if (!r.success) return { ok: false, message: "Datos no válidos." };
+  if (!r.success) return { ok: false, message: M.dataInvalid };
   const auth = await authorize(r.data.propertyId);
-  if ("error" in auth) return { ok: false, message: auth.error ?? "No autorizado." };
+  if ("error" in auth) return { ok: false, message: auth.error ?? M.notAuthorized };
   const { supabase, id } = auth;
   const { data: m } = await supabase.from("property_media").select("id, kind").eq("id", r.data.mediaId).eq("property_id", id).maybeSingle();
-  if (!m || m.kind !== "foto") return { ok: false, message: "Solo una foto puede ser portada." };
+  if (!m || m.kind !== "foto") return { ok: false, message: M.coverPhotoOnly };
   const off = await supabase.from("property_media").update({ is_cover: false }).eq("property_id", id).eq("is_cover", true);
   if (off.error) return { ok: false, message: dbErrorMessage(off.error) };
   const { data, error } = await supabase.from("property_media").update({ is_cover: true }).eq("id", m.id).select("id");
   if (error || !data?.length) return { ok: false, message: dbErrorMessage(error) };
   revalidatePath(editorPath(id));
-  return { ok: true, message: "Portada actualizada." };
+  return { ok: true, message: M.coverUpdated };
 }
 
 export async function deleteMedia(input: { propertyId: string; mediaId: string }): Promise<SimpleResult> {
+  return localizeResult(await deleteMediaEs(input), await getLocale());
+}
+async function deleteMediaEs(input: { propertyId: string; mediaId: string }): Promise<SimpleResult> {
   const r = mediaRef.safeParse(input);
-  if (!r.success) return { ok: false, message: "Datos no válidos." };
+  if (!r.success) return { ok: false, message: M.dataInvalid };
   const auth = await authorize(r.data.propertyId);
-  if ("error" in auth) return { ok: false, message: auth.error ?? "No autorizado." };
+  if ("error" in auth) return { ok: false, message: auth.error ?? M.notAuthorized };
   const { supabase, id } = auth;
   const { data, error } = await supabase.from("property_media").delete().eq("id", r.data.mediaId).eq("property_id", id).select("storage_path");
   if (error) return { ok: false, message: dbErrorMessage(error) };
-  if (!data?.length) return { ok: false, message: "No se encontró el elemento." };
+  if (!data?.length) return { ok: false, message: M.itemNotFound };
   const path = data[0].storage_path as string | null;
   if (path) await supabase.storage.from("property-media").remove([path]);
   revalidatePath(editorPath(id));
-  return { ok: true, message: "Eliminado." };
+  return { ok: true, message: M.deleted };
 }
 
 /** Elimina un archivo recién cargado cuyo registro no se pudo crear (limpieza). */
@@ -409,29 +436,32 @@ export async function discardUpload(input: { propertyId: string; storagePath: st
 // ---------------------------------------------------------------------
 const docSchema = z.object({
   propertyId: z.uuid(),
-  docType: z.enum(Object.keys(DOC_TYPES_LABELS) as [keyof typeof DOC_TYPES_LABELS, ...(keyof typeof DOC_TYPES_LABELS)[]], { error: "Seleccione el tipo de documento" }),
+  docType: z.enum(Object.keys(DOC_TYPES_LABELS) as [keyof typeof DOC_TYPES_LABELS, ...(keyof typeof DOC_TYPES_LABELS)[]], { error: M.docType }),
   storagePath: z.string().max(300),
   fileName: z.string().trim().min(1).max(200),
 });
 const DOC_MIME = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 
 export async function addDocument(input: z.input<typeof docSchema>): Promise<SimpleResult> {
+  return localizeResult(await addDocumentEs(input), await getLocale());
+}
+async function addDocumentEs(input: z.input<typeof docSchema>): Promise<SimpleResult> {
   const r = docSchema.safeParse(input);
-  if (!r.success) return { ok: false, message: r.error.issues[0]?.message ?? "Datos no válidos." };
+  if (!r.success) return { ok: false, message: r.error.issues[0]?.message ?? M.dataInvalid };
   const auth = await authorize(r.data.propertyId);
-  if ("error" in auth) return { ok: false, message: auth.error ?? "No autorizado." };
+  if ("error" in auth) return { ok: false, message: auth.error ?? M.notAuthorized };
   const { supabase, id } = auth;
   const prefix = `properties/${id}/`;
   if (!r.data.storagePath.startsWith(prefix) || !fileNameRe.test(r.data.storagePath.slice(prefix.length))) {
-    return { ok: false, message: "Ruta de archivo no válida." };
+    return { ok: false, message: M.pathInvalid };
   }
   const obj = await objectExists(supabase, "private-docs", r.data.storagePath);
-  if (!obj) return { ok: false, message: "No se encontró el archivo cargado. Intente de nuevo." };
+  if (!obj) return { ok: false, message: M.fileNotFound };
   const meta = (obj.metadata ?? {}) as { size?: number; mimetype?: string };
   const size = Number(meta.size ?? 0);
   const mime = String(meta.mimetype ?? "");
   if (!DOC_MIME.includes(mime) || !(size > 0 && size <= 15 * 1024 * 1024)) {
-    return { ok: false, message: "Formato o tamaño no permitido (PDF, JPG, PNG o WebP; máximo 15 MB)." };
+    return { ok: false, message: M.fileFormat };
   }
   const { data, error } = await supabase
     .from("property_documents")
@@ -439,18 +469,21 @@ export async function addDocument(input: z.input<typeof docSchema>): Promise<Sim
     .select("id");
   if (error || !data?.length) return { ok: false, message: dbErrorMessage(error) };
   revalidatePath(editorPath(id));
-  return { ok: true, message: "Documento cargado. Queda pendiente de revisión por MAJ." };
+  return { ok: true, message: M.docUploaded };
 }
 
 export async function deleteDocument(input: { propertyId: string; documentId: string }): Promise<SimpleResult> {
+  return localizeResult(await deleteDocumentEs(input), await getLocale());
+}
+async function deleteDocumentEs(input: { propertyId: string; documentId: string }): Promise<SimpleResult> {
   const r = z.object({ propertyId: z.uuid(), documentId: z.uuid() }).safeParse(input);
-  if (!r.success) return { ok: false, message: "Datos no válidos." };
+  if (!r.success) return { ok: false, message: M.dataInvalid };
   const auth = await authorize(r.data.propertyId);
-  if ("error" in auth) return { ok: false, message: auth.error ?? "No autorizado." };
+  if ("error" in auth) return { ok: false, message: auth.error ?? M.notAuthorized };
   const { data, error } = await auth.supabase.from("property_documents").delete().eq("id", r.data.documentId).eq("property_id", auth.id).select("id");
   if (error) return { ok: false, message: dbErrorMessage(error) };
-  if (!data?.length) return { ok: false, message: "Solo puede retirar documentos que usted cargó y que siguen pendientes de revisión." };
+  if (!data?.length) return { ok: false, message: M.docWithdrawOnly };
   revalidatePath(editorPath(auth.id));
-  return { ok: true, message: "Documento retirado." };
+  return { ok: true, message: M.docWithdrawn };
 }
 

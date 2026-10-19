@@ -1,12 +1,12 @@
 // Vista del propietario: inquilinos y cuotas de renta que MAJ cobra por él (solo lectura).
 import type { createClient } from "@/lib/supabase/server";
 import { formatDate, formatMoney, type Currency } from "@/lib/format";
+import { fmt } from "@/i18n";
+import { getI18n } from "@/i18n/server";
 
 type Db = Awaited<ReturnType<typeof createClient>>;
 type Lease = { id: string; unit_label: string | null; tenant_name: string; rent_amount: number; currency: Currency; due_day: number; fee_percent: number; status: string };
 type Charge = { id: string; lease_id: string; period: string; due_date: string; amount: number; currency: Currency; status: string; fee_amount: number | null; owner_amount: number | null };
-
-const STATUS: Record<string, string> = { pendiente: "Pendiente", en_revision: "Pago en revisión", pagado: "Cobrada", anulado: "Anulada" };
 
 export async function OwnerRents({ supabase, contractId }: { supabase: Db; contractId: string }) {
   const { data: leaseData } = await supabase.from("rental_leases")
@@ -18,25 +18,28 @@ export async function OwnerRents({ supabase, contractId }: { supabase: Db; contr
     .in("lease_id", leases.map((l) => l.id)).order("period", { ascending: false }).limit(48);
   const charges = (chargeData ?? []) as Charge[];
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santo_Domingo" }).format(new Date());
+  const { d } = await getI18n();
+  const t = d.panel.ownerRents;
+  const STATUS = d.status.rentCharges;
 
   return (
     <section className="card card-body stack" aria-labelledby="rent-title">
-      <h2 id="rent-title" style={{ margin: 0 }}>Cobro de renta</h2>
+      <h2 id="rent-title" style={{ margin: 0 }}>{t.title}</h2>
       {leases.map((l) => (
         <div key={l.id} className="stack">
           <p className="small" style={{ margin: 0 }}>
-            <strong>{l.unit_label ? `${l.unit_label} · ` : ""}{l.tenant_name}</strong> · {formatMoney(l.rent_amount, l.currency, { decimals: true })} al mes, día {l.due_day} ·
-            comisión MAJ {Number(l.fee_percent)}% {l.status !== "activo" ? "· terminado" : ""}
+            <strong>{l.unit_label ? `${l.unit_label} · ` : ""}{l.tenant_name}</strong> · {fmt(t.perMonth, { amount: formatMoney(l.rent_amount, l.currency, { decimals: true }), day: l.due_day })} ·
+            {" "}{fmt(t.fee, { pct: Number(l.fee_percent) })} {l.status !== "activo" ? t.ended : ""}
           </p>
           <div className="table-wrap">
             <table className="table">
-              <thead><tr><th>Período</th><th>Vence</th><th>Renta</th><th>Estado</th><th>Comisión MAJ</th><th>Para usted</th></tr></thead>
+              <thead><tr><th>{t.period}</th><th>{t.due}</th><th>{t.rent}</th><th>{t.status}</th><th>{t.feeCol}</th><th>{t.forYou}</th></tr></thead>
               <tbody>{charges.filter((c) => c.lease_id === l.id).map((c) => (
                 <tr key={c.id}>
                   <td>{c.period}</td>
                   <td>{formatDate(c.due_date)}</td>
                   <td>{formatMoney(c.amount, c.currency, { decimals: true })}</td>
-                  <td>{c.status === "pendiente" && c.due_date < today ? "Atrasada" : (STATUS[c.status] ?? c.status)}</td>
+                  <td>{c.status === "pendiente" && c.due_date < today ? t.late : (STATUS[c.status] ?? c.status)}</td>
                   <td>{c.fee_amount !== null ? formatMoney(c.fee_amount, c.currency, { decimals: true }) : "—"}</td>
                   <td>{c.owner_amount !== null ? <strong>{formatMoney(c.owner_amount, c.currency, { decimals: true })}</strong> : "—"}</td>
                 </tr>
@@ -45,7 +48,7 @@ export async function OwnerRents({ supabase, contractId }: { supabase: Db; contr
           </div>
         </div>
       ))}
-      <p className="xs muted" style={{ margin: 0 }}>«Para usted» es la renta cobrada menos la comisión de MAJ. El pago al propietario aparece en los movimientos cuando MAJ lo registra.</p>
+      <p className="xs muted" style={{ margin: 0 }}>{t.note}</p>
     </section>
   );
 }

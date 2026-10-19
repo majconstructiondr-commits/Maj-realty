@@ -47,10 +47,10 @@ function round2(n: number) {
 
 const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 
-/** "2026-09" → "septiembre 2026" */
-export function periodLabel(period: string): string {
+/** "2026-09" → "septiembre 2026" (o con los meses del idioma activo). */
+export function periodLabel(period: string, months: readonly string[] = MONTHS): string {
   const m = /^(\d{4})-(\d{2})$/.exec(period);
   if (!m) return period;
   const idx = Number(m[2]) - 1;
-  return idx >= 0 && idx < 12 ? `${MONTHS[idx]} ${m[1]}` : period;
+  return idx >= 0 && idx < 12 ? `${months[idx]} ${m[1]}` : period;
 }

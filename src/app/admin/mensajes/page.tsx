@@ -4,6 +4,7 @@ import { CONVERSATION_STATUSES } from "@/lib/admin/labels";
 import { ilikeTerm, oneOf, pageOf, str, type SP } from "@/lib/admin/params";
 import { staffCtx } from "@/lib/admin/server";
 import { formatDate } from "@/lib/format";
+import { getI18n } from "@/i18n/server";
 
 const BASE = "/admin/mensajes";
 type Conv = {
@@ -14,6 +15,9 @@ type Conv = {
 export default async function AdminConversations(props: PageProps<"/admin/mensajes">) {
   const sp = (await props.searchParams) as SP;
   const { supabase } = await staffCtx(BASE);
+  const i = (await getI18n()).d;
+  const c = i.admin.common;
+  const t = i.admin.convs;
   const status = oneOf(sp, "status", Object.keys(CONVERSATION_STATUSES));
   const term = ilikeTerm(str(sp, "q"));
   const reportadas = str(sp, "reportadas") === "1";
@@ -34,30 +38,30 @@ export default async function AdminConversations(props: PageProps<"/admin/mensaj
 
   return (
     <>
-      <PageHeader title="Conversaciones" />
-      <p className="small muted">Chat interno de la página. No está conectado a WhatsApp: abrir un enlace de WhatsApp no genera mensajes aquí.</p>
+      <PageHeader title={t.title} />
+      <p className="small muted">{t.note}</p>
       <form method="get" className="card card-body form-grid" style={{ marginBottom: 16 }} role="search">
-        <div className="field"><label htmlFor="m-q">Asunto</label><input id="m-q" name="q" className="input" defaultValue={str(sp, "q")} /></div>
-        <div className="field"><label htmlFor="m-s">Estado</label><select id="m-s" name="status" className="select" defaultValue={status}><Options map={CONVERSATION_STATUSES} empty="Todos" /></select></div>
-        <label className="check"><input type="checkbox" name="reportadas" value="1" defaultChecked={reportadas} /> Con reportes abiertos</label>
-        <div className="row"><button className="btn btn-primary" type="submit">Filtrar</button><Link href={BASE} className="btn btn-ghost">Limpiar</Link></div>
+        <div className="field"><label htmlFor="m-q">{t.subject}</label><input id="m-q" name="q" className="input" defaultValue={str(sp, "q")} /></div>
+        <div className="field"><label htmlFor="m-s">{c.status}</label><select id="m-s" name="status" className="select" defaultValue={status}><Options map={i.status.conversations} empty={c.all} /></select></div>
+        <label className="check"><input type="checkbox" name="reportadas" value="1" defaultChecked={reportadas} /> {t.withReports}</label>
+        <div className="row"><button className="btn btn-primary" type="submit">{c.filter}</button><Link href={BASE} className="btn btn-ghost">{c.clear}</Link></div>
       </form>
-      {error && <p className="alert alert-error">No se pudo cargar la lista.</p>}
-      {rows.length === 0 ? <Empty>No hay conversaciones.</Empty> : (
+      {error && <p className="alert alert-error">{c.loadError}</p>}
+      {rows.length === 0 ? <Empty>{t.empty}</Empty> : (
         <div className="table-wrap">
           <table className="table">
-            <thead><tr><th>Asunto</th><th>Relacionado</th><th>Participantes</th><th>Estado</th><th>Último mensaje</th></tr></thead>
+            <thead><tr><th>{t.subject}</th><th>{t.related}</th><th>{t.participants}</th><th>{c.status}</th><th>{t.lastMessage}</th></tr></thead>
             <tbody>
-              {rows.map((c) => (
-                <tr key={c.id}>
-                  <td><Link href={`${BASE}/${c.id}`}><strong>{c.subject}</strong></Link></td>
+              {rows.map((cv) => (
+                <tr key={cv.id}>
+                  <td><Link href={`${BASE}/${cv.id}`}><strong>{cv.subject}</strong></Link></td>
                   <td className="small">
-                    {c.properties && <Link href={`/admin/inmuebles/${c.property_id}`}>{c.properties.code}</Link>}
-                    {c.service_requests && <Link href={`/admin/solicitudes/${c.request_id}`}>{c.service_requests.number}</Link>}
+                    {cv.properties && <Link href={`/admin/inmuebles/${cv.property_id}`}>{cv.properties.code}</Link>}
+                    {cv.service_requests && <Link href={`/admin/solicitudes/${cv.request_id}`}>{cv.service_requests.number}</Link>}
                   </td>
-                  <td className="small">{c.conversation_participants.length}</td>
-                  <td><Badge value={c.status} map={CONVERSATION_STATUSES} /></td>
-                  <td className="small">{formatDate(c.last_message_at, true)}</td>
+                  <td className="small">{cv.conversation_participants.length}</td>
+                  <td><Badge value={cv.status} map={i.status.conversations} /></td>
+                  <td className="small">{formatDate(cv.last_message_at, true)}</td>
                 </tr>
               ))}
             </tbody>

@@ -16,19 +16,28 @@ import { MediaManager } from "@/components/listing-editor/MediaManager";
 import { DocumentManager } from "@/components/listing-editor/DocumentManager";
 import { ListingPreview } from "@/components/listing-editor/ListingPreview";
 import { SubmitReview } from "@/components/listing-editor/SubmitReview";
+import { es, fmt, type Dictionary } from "@/i18n";
+import { getI18n } from "@/i18n/server";
 
-export const metadata: Metadata = { title: "Editar publicación", robots: { index: false, follow: false } };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).d.editor.edit.meta, robots: { index: false, follow: false } };
+}
 
-const SECTION_LABEL: Record<string, string> = { property: "datos del inmueble", prices: "precios", private: "datos privados" };
-
-function summarizeChanges(c: ChangeSet) {
+function summarizeChanges(c: ChangeSet, d: Dictionary) {
+  const t = d.editor.edit;
   return Object.keys(c)
     .map((k) => {
       const v = (c as Record<string, unknown>)[k];
       const n = Array.isArray(v) ? v.length : v && typeof v === "object" ? Object.keys(v).length : 0;
-      return `${SECTION_LABEL[k] ?? k}${k === "prices" ? "" : ` (${n} campo${n === 1 ? "" : "s"})`}`;
+      return `${t.sections[k] ?? k}${k === "prices" ? "" : ` (${n === 1 ? t.fieldsOne : fmt(t.fields, { n })})`}`;
     })
     .join(", ");
+}
+
+/** Traduce un requisito de missingForReview (en español) al idioma activo. */
+function missingLabel(label: string, d: Dictionary) {
+  const key = (Object.keys(es.editor.missing) as (keyof Dictionary["editor"]["missing"])[]).find((k) => es.editor.missing[k] === label);
+  return key ? d.editor.missing[key] : label;
 }
 
 export default async function EditListingPage(props: PageProps<"/panel/publicaciones/[id]/editar">) {
@@ -46,15 +55,18 @@ export default async function EditListingPage(props: PageProps<"/panel/publicaci
   const lastReviewed = data.changeRequests.find((c) => c.status !== "pendiente" && c.status !== "retirado");
   const readOnly = !data.canEdit || ["archivado", "vendido", "rentado"].includes(data.property.status);
   const base = `/panel/publicaciones/${id}/editar`;
+  const { d } = await getI18n();
+  const t = d.editor.edit;
+  const stepLabel = (key: string) => d.editor.steps[key] ?? key;
 
   return (
     <div className="section-sm">
-      <nav aria-label="Ruta" className="small" style={{ marginBottom: 8 }}>
-        <Link href="/panel/publicaciones">← Mis publicaciones</Link>
+      <nav aria-label={d.common.breadcrumb} className="small" style={{ marginBottom: 8 }}>
+        <Link href="/panel/publicaciones">{t.back}</Link>
       </nav>
       <div className="row-between" style={{ alignItems: "flex-start" }}>
         <div style={{ minWidth: 0 }}>
-          <span className="eyebrow">Ref. {data.property.code}</span>
+          <span className="eyebrow">{fmt(t.ref, { code: data.property.code })}</span>
           <h1 style={{ marginBottom: 4, overflowWrap: "anywhere" }}>{data.property.title}</h1>
         </div>
         <StatusBadge status={data.property.status} />
@@ -62,47 +74,46 @@ export default async function EditListingPage(props: PageProps<"/panel/publicaci
 
       {data.property.status === "rechazado" && data.property.rejection_reason ? (
         <div className="alert alert-error" role="note" style={{ margin: "10px 0" }}>
-          <strong>Motivo del rechazo:</strong> {data.property.rejection_reason}
-          <span className="small" style={{ display: "block" }}>Corrija lo indicado y vuelva a enviarla a revisión en el último paso.</span>
+          <strong>{t.rejection}</strong> {data.property.rejection_reason}
+          <span className="small" style={{ display: "block" }}>{t.rejectionHelp}</span>
         </div>
       ) : null}
       {data.property.status === "pausado" && data.property.pause_reason ? (
-        <p className="alert alert-warning small">Pausada: {data.property.pause_reason}</p>
+        <p className="alert alert-warning small">{fmt(t.paused, { reason: data.property.pause_reason })}</p>
       ) : null}
 
       {live && !readOnly ? (
         <div className="alert alert-info small" role="note" style={{ margin: "10px 0" }}>
-          <strong>Publicación {data.property.status === "en_revision" ? "en revisión" : "activa"}.</strong> Los cambios que guarde aquí se envían a MAJ como una
-          solicitud de cambio: la versión {data.property.status === "en_revision" ? "enviada" : "publicada"} se mantiene hasta que MAJ los apruebe.
-          Fotos y documentos nuevos se pueden agregar y quedan pendientes de revisión.
-          {data.property.status === "en_revision" ? " Si prefiere editar directamente, retire la publicación de revisión desde “Mis publicaciones” (volverá a borrador)." : ""}
+          <strong>{data.property.status === "en_revision" ? t.liveInReview : t.liveActive}</strong>{" "}
+          {data.property.status === "en_revision" ? t.liveSentBody : t.livePublishedBody} {t.liveMedia}
+          {data.property.status === "en_revision" ? t.liveWithdraw : ""}
         </div>
       ) : null}
       {view.pending ? (
         <div className="alert alert-warning small" role="status" style={{ margin: "10px 0" }}>
-          Solicitud de cambio <StateBadge value="pendiente" /> enviada el {formatDate(view.pending.created_at, true)}: {summarizeChanges(view.pending.changes)}.
-          Los formularios muestran sus cambios propuestos; si vuelve a guardar, la solicitud se actualiza.
+          {t.pendingBefore} <StateBadge value="pendiente" /> {fmt(t.pendingAfter, { date: formatDate(view.pending.created_at, true), summary: summarizeChanges(view.pending.changes, d) })}{" "}
+          {t.pendingNote}
         </div>
       ) : null}
       {lastReviewed && !view.pending && lastReviewed.status === "rechazado" ? (
         <p className="alert alert-error small">
-          Su última solicitud de cambio fue rechazada el {formatDate(lastReviewed.reviewed_at, true)}{lastReviewed.review_reason ? `: ${lastReviewed.review_reason}` : "."}
+          {fmt(t.lastRejected, { date: formatDate(lastReviewed.reviewed_at, true) })}{lastReviewed.review_reason ? `: ${lastReviewed.review_reason}` : "."}
         </p>
       ) : null}
       {readOnly ? (
         <p className="alert alert-warning small">
           {data.canEdit
-            ? "Esta publicación ya no admite cambios. Puede duplicarla como borrador desde “Mis publicaciones”."
-            : "Solo lectura: no tiene permiso para editar esta publicación."}
+            ? t.closed
+            : t.readOnly}
         </p>
       ) : null}
 
-      <nav aria-label="Pasos del editor">
+      <nav aria-label={t.stepsAria}>
         <ol className="stepper" style={{ marginTop: 14 }}>
           {STEPS.map((s) => (
             <li key={s.n}>
               <Link href={`${base}?paso=${s.n}`} aria-current={s.n === step ? "step" : undefined}>
-                <span aria-hidden="true">{s.n}.</span> {s.label}
+                <span aria-hidden="true">{s.n}.</span> {stepLabel(s.key)}
               </Link>
             </li>
           ))}
@@ -110,25 +121,26 @@ export default async function EditListingPage(props: PageProps<"/panel/publicaci
       </nav>
 
       <h2 style={{ fontSize: "1.35rem" }}>
-        Paso {step} de {STEPS.length}: {STEPS[step - 1].label}
+        {fmt(t.stepOf, { n: step, total: STEPS.length, label: stepLabel(STEPS[step - 1].key) })}
       </h2>
 
       {readOnly && step !== 8 ? (
         <ListingPreview p={p} prices={view.prices} media={data.media} idSuffix="ro" />
       ) : (
-        <StepContent step={step} data={data} view={view} live={live} readOnly={readOnly} />
+        <StepContent step={step} data={data} view={view} live={live} readOnly={readOnly} d={d} />
       )}
 
       <div className="row-between" style={{ marginTop: 18 }}>
-        {step > 1 ? <Link className="btn btn-ghost btn-sm" href={`${base}?paso=${step - 1}`}>← Paso anterior</Link> : <span />}
-        {step < 8 ? <Link className="btn btn-ghost btn-sm" href={`${base}?paso=${step + 1}`}>Paso siguiente (sin guardar) →</Link> : null}
+        {step > 1 ? <Link className="btn btn-ghost btn-sm" href={`${base}?paso=${step - 1}`}>{t.prev}</Link> : <span />}
+        {step < 8 ? <Link className="btn btn-ghost btn-sm" href={`${base}?paso=${step + 1}`}>{t.next}</Link> : null}
       </div>
     </div>
   );
 }
 
-function StepContent({ step, data, view, live, readOnly }: {
+function StepContent({ step, data, view, live, readOnly, d }: {
   step: number;
+  d: Dictionary;
   data: EditorData;
   view: ReturnType<typeof withPendingChanges> | { property: EditorData["property"]; priv: EditorData["priv"]; prices: EditorData["prices"]; pending: null };
   live: boolean;
@@ -152,7 +164,7 @@ function StepContent({ step, data, view, live, readOnly }: {
         <>
           <MediaManager propertyId={id} media={data.media} live={live} />
           <div className="row" style={{ justifyContent: "flex-end", marginTop: 14 }}>
-            <Link className="btn btn-primary" href={`/panel/publicaciones/${id}/editar?paso=7`}>Continuar</Link>
+            <Link className="btn btn-primary" href={`/panel/publicaciones/${id}/editar?paso=7`}>{d.editor.edit.continue}</Link>
           </div>
         </>
       );
@@ -164,12 +176,13 @@ function StepContent({ step, data, view, live, readOnly }: {
         </div>
       );
     default:
-      return <PreviewStep data={data} view={view} readOnly={readOnly} />;
+      return <PreviewStep data={data} view={view} readOnly={readOnly} d={d} />;
   }
 }
 
-async function PreviewStep({ data, view, readOnly }: { data: EditorData; view: { property: EditorData["property"]; prices: EditorData["prices"] }; readOnly: boolean }) {
+async function PreviewStep({ data, view, readOnly, d }: { data: EditorData; view: { property: EditorData["property"]; prices: EditorData["prices"] }; readOnly: boolean; d: Dictionary }) {
   const supabase = await createClient();
+  const t = d.editor.edit;
   const prop = data.property;
   const missing = missingForReview({
     province: prop.province,
@@ -198,7 +211,7 @@ async function PreviewStep({ data, view, readOnly }: { data: EditorData; view: {
   return (
     <div className="form">
       <section className="card card-body" aria-labelledby="checklist-title">
-        <h3 id="checklist-title">Lista de verificación para enviar a revisión</h3>
+        <h3 id="checklist-title">{t.checklist}</h3>
         <ul className="le-checklist">
           {checks.map(([label]) => {
             const miss = missing.includes(label);
@@ -206,9 +219,9 @@ async function PreviewStep({ data, view, readOnly }: { data: EditorData; view: {
               <li key={label}>
                 <span className={miss ? "le-miss" : "le-ok"} aria-hidden="true">{miss ? "✗" : "✓"}</span>
                 <span>
-                  <span className="sr-only">{miss ? "Falta: " : "Completo: "}</span>
-                  {label.charAt(0).toUpperCase() + label.slice(1)}
-                  {miss ? <> — <Link href={`/panel/publicaciones/${prop.id}/editar?paso=${MISSING_STEP[label]}`}>completar en el paso {MISSING_STEP[label]}</Link></> : null}
+                  <span className="sr-only">{miss ? t.missing : t.complete}</span>
+                  {missingLabel(label, d).charAt(0).toUpperCase() + missingLabel(label, d).slice(1)}
+                  {miss ? <> — <Link href={`/panel/publicaciones/${prop.id}/editar?paso=${MISSING_STEP[label]}`}>{fmt(t.completeInStep, { n: MISSING_STEP[label] })}</Link></> : null}
                 </span>
               </li>
             );
@@ -217,24 +230,24 @@ async function PreviewStep({ data, view, readOnly }: { data: EditorData; view: {
             <span className={license || prop.is_maj_listing ? "le-ok" : "le-miss"} aria-hidden="true">{license || prop.is_maj_listing ? "✓" : "✗"}</span>
             <span>
               {prop.is_maj_listing ? (
-                <>Publicación de MAJ: no necesita licencia</>
+                <>{t.majListing}</>
               ) : license ? (
-                <>Licencia activa {license.code} (vence el {formatDate(license.ends_at)})</>
+                <>{fmt(t.activeLicense, { code: license.code, date: formatDate(license.ends_at) })}</>
               ) : (
-                <>Licencia de publicación activa — <Link href="/panel/licencia">ver licencia</Link></>
+                <>{t.licenseNeeded} — <Link href="/panel/licencia">{t.viewLicense}</Link></>
               )}
             </span>
           </li>
         </ul>
         {data.priv && !data.documents.some((d) => d.doc_type === "autorizacion_publicacion") ? (
-          <p className="small muted" style={{ marginBottom: 0 }}>Recomendado: cargue la autorización de publicación firmada en el paso 7.</p>
+          <p className="small muted" style={{ marginBottom: 0 }}>{t.recommendAuth}</p>
         ) : null}
       </section>
 
       {duplicates.length ? (
         <section className="alert alert-warning" aria-labelledby="dup-title">
-          <h3 id="dup-title" style={{ marginTop: 0 }}>Posible publicación duplicada</h3>
-          <p className="small">Encontramos publicaciones con la misma dirección, unidad y tipo. No bloquea el envío, pero MAJ lo revisará. Si es otra unidad, indíquelo en el campo Unidad (paso 2).</p>
+          <h3 id="dup-title" style={{ marginTop: 0 }}>{t.duplicate}</h3>
+          <p className="small">{t.duplicateBody}</p>
           <ul className="small">
             {duplicates.map((d) => (
               <li key={d.property_id}>{d.code} · {d.title}</li>
@@ -244,41 +257,41 @@ async function PreviewStep({ data, view, readOnly }: { data: EditorData; view: {
       ) : null}
 
       <section aria-labelledby="preview-title">
-        <h3 id="preview-title">Vista previa</h3>
+        <h3 id="preview-title">{t.preview}</h3>
         <p className="small muted">
-          Así se verá la publicación{isLiveStatus(prop.status) ? " con sus cambios propuestos" : ""}. Las imágenes pendientes de aprobación se muestran aquí, pero el público solo ve las aprobadas.
+          {isLiveStatus(prop.status) ? t.previewBodyLive : t.previewBody}
         </p>
         <div className="le-preview-grid">
           <div className="card card-body" style={{ minWidth: 0 }}>
-            <p className="xs muted" style={{ marginTop: 0 }}>Pantalla ancha</p>
+            <p className="xs muted" style={{ marginTop: 0 }}>{t.wide}</p>
             <ListingPreview p={view.property} prices={view.prices} media={data.media} idSuffix="wide" />
           </div>
           <div>
-            <div className="le-phone" role="region" aria-label="Vista previa en móvil">
+            <div className="le-phone" role="region" aria-label={t.mobileAria}>
               <div className="le-phone-screen">
                 <ListingPreview p={view.property} prices={view.prices} media={data.media} idSuffix="mobile" />
               </div>
             </div>
-            <p className="le-phone-caption">Vista en teléfono (aprox. 390 px)</p>
+            <p className="le-phone-caption">{t.phoneCaption}</p>
           </div>
         </div>
       </section>
 
       {canSubmit ? (
         <section className="card card-body" aria-labelledby="send-title">
-          <h3 id="send-title">{prop.status === "pausado" ? "Reenviar a revisión" : "Enviar a revisión"}</h3>
+          <h3 id="send-title">{prop.status === "pausado" ? t.resend : t.send}</h3>
           {missing.length ? (
-            <p className="alert alert-warning small">Complete los datos que faltan antes de enviar: {missing.join(", ")}.</p>
+            <p className="alert alert-warning small">{fmt(t.completeMissing, { list: missing.map((m) => missingLabel(m, d)).join(", ") })}</p>
           ) : null}
-          <SubmitReview propertyId={prop.id} disabled={missing.length > 0} label={prop.status === "pausado" ? "Reenviar a revisión" : "Enviar a revisión"} />
+          <SubmitReview propertyId={prop.id} disabled={missing.length > 0} label={prop.status === "pausado" ? t.resend : t.send} />
         </section>
       ) : (
         <p className="alert alert-info small">
           {prop.status === "en_revision"
-            ? "Esta publicación ya está en revisión. MAJ le avisará cuando sea aprobada o si necesita cambios."
+            ? t.inReview
             : isLiveStatus(prop.status) && !readOnly
-              ? "Esta publicación está activa. Use los pasos anteriores para proponer cambios; MAJ los revisará."
-              : "Esta publicación no se puede enviar a revisión en su estado actual."}
+              ? t.activeUseSteps
+              : t.cannotSubmit}
         </p>
       )}
     </div>

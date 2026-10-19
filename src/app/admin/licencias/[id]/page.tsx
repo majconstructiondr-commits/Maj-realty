@@ -2,12 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { Badge, FileLink, PageHeader } from "@/components/admin/Bits";
-import { LICENSE_STATUSES, PAYMENT_METHODS, PAYMENT_STATUSES, STATUSES, labelOf } from "@/lib/admin/labels";
+import { labelOf } from "@/lib/admin/labels";
 import { isUuid } from "@/lib/admin/params";
 import { labelFor, staffCtx, userLabels } from "@/lib/admin/server";
 import { addDays, localDay } from "@/lib/admin/time";
 import { formatDate, formatMoney, type Currency } from "@/lib/format";
 import { activateLicense, changeLicenseStatus, reviewLicensePayment } from "../actions";
+import { fmt } from "@/i18n";
+import { getI18n } from "@/i18n/server";
 
 type Pay = { id: string; amount: number; currency: Currency; method: string; reference: string | null; receipt_path: string | null; status: string; review_reason: string | null; submitted_by: string; reviewed_by: string | null; reviewed_at: string | null; created_at: string };
 
@@ -15,6 +17,8 @@ export default async function LicenseDetail(props: PageProps<"/admin/licencias/[
   const { id } = await props.params;
   if (!isUuid(id)) notFound();
   const { supabase } = await staffCtx(`/admin/licencias/${id}`);
+  const i = (await getI18n()).d;
+  const t = i.admin.licenses;
   const { data: l } = await supabase.from("licenses").select("*, plans(name, duration_days, active_listing_quota, max_members), organizations(id, name, status)").eq("id", id).maybeSingle();
   if (!l) notFound();
   const [pays, props_] = await Promise.all([
@@ -32,39 +36,39 @@ export default async function LicenseDetail(props: PageProps<"/admin/licencias/[
 
   return (
     <>
-      <PageHeader title={`Licencia ${l.code}`} back={{ href: "/admin/licencias", label: "Licencias" }}>
-        <Badge value={l.status as string} map={LICENSE_STATUSES} />
+      <PageHeader title={fmt(t.licenseN, { code: String(l.code) })} back={{ href: "/admin/licencias", label: t.back }}>
+        <Badge value={l.status as string} map={i.status.license} />
       </PageHeader>
       <div className="grid-2">
         <section className="card card-body stack">
-          <h2>Datos</h2>
+          <h2>{t.data}</h2>
           <p className="small">
-            Titular: {org ? <>{org.name} (organización · {org.status})</> : <>{labelFor(people, l.holder_user_id as string)} {people.get(l.holder_user_id as string)?.email && `· ${people.get(l.holder_user_id as string)?.email}`} · <Link href={`/admin/usuarios/${l.holder_user_id}`}>ver usuario</Link></>}<br />
-            Plan: {plan?.name}<br />
-            Vigencia: {formatDate(l.starts_at as string)} – {formatDate(l.ends_at as string)}<br />
-            Cuota: {live} de {l.active_listing_quota as number} publicaciones activas · {l.max_members as number} miembro(s)<br />
-            {l.status_reason && <>Motivo de estado: {l.status_reason as string}<br /></>}
-            {l.activated_by && <>Activada por {labelFor(people, l.activated_by as string)}</>}
+            {t.holderLabel} {org ? <>{org.name} ({t.orgLower} · {labelOf(i.status.org, org.status)})</> : <>{labelFor(people, l.holder_user_id as string)} {people.get(l.holder_user_id as string)?.email && `· ${people.get(l.holder_user_id as string)?.email}`} · <Link href={`/admin/usuarios/${l.holder_user_id}`}>{t.viewUser}</Link></>}<br />
+            {t.planLabel} {plan?.name}<br />
+            {t.termLabel} {formatDate(l.starts_at as string)} – {formatDate(l.ends_at as string)}<br />
+            {fmt(t.quotaLong, { live, q: l.active_listing_quota as number, m: l.max_members as number })}<br />
+            {l.status_reason && <>{t.statusReason} {l.status_reason as string}<br /></>}
+            {l.activated_by && <>{fmt(t.activatedBy, { who: labelFor(people, l.activated_by as string) })}</>}
           </p>
         </section>
         <section className="card card-body stack">
-          <h2>{l.status === "activa" ? "Ajustar vigencia" : "Activar / renovar"}</h2>
+          <h2>{l.status === "activa" ? t.adjustTerm : t.activateRenew}</h2>
           {l.status !== "cancelada" ? (
-            <ActionForm action={activateLicense} submit={l.status === "activa" ? "Guardar vigencia" : "Activar licencia"} confirm="¿Confirmar las fechas de vigencia?">
+            <ActionForm action={activateLicense} submit={l.status === "activa" ? t.saveTerm : t.activate} confirm={t.confirmDates}>
               <input type="hidden" name="id" value={id} />
               <div className="form-grid">
-                <div className="field"><label htmlFor="a-s" className="required">Inicio</label><input id="a-s" type="date" name="starts_on" className="input" required defaultValue={startDefault} /></div>
-                <div className="field"><label htmlFor="a-e" className="required">Fin</label><input id="a-e" type="date" name="ends_on" className="input" required defaultValue={endDefault} /></div>
+                <div className="field"><label htmlFor="a-s" className="required">{t.start}</label><input id="a-s" type="date" name="starts_on" className="input" required defaultValue={startDefault} /></div>
+                <div className="field"><label htmlFor="a-e" className="required">{t.end}</label><input id="a-e" type="date" name="ends_on" className="input" required defaultValue={endDefault} /></div>
               </div>
-              <label className="check"><input type="checkbox" name="refresh_quota" /> Actualizar cuota y miembros desde el plan actual</label>
+              <label className="check"><input type="checkbox" name="refresh_quota" /> {t.refreshQuota}</label>
             </ActionForm>
-          ) : <p className="muted small">Licencia cancelada: cree una nueva si corresponde.</p>}
+          ) : <p className="muted small">{t.cancelledNote}</p>}
           {["activa", "pendiente", "vencida", "suspendida"].includes(l.status as string) && (
-            <ActionForm action={changeLicenseStatus} submit="Aplicar" buttonClass="btn btn-danger btn-sm">
+            <ActionForm action={changeLicenseStatus} submit={t.apply} buttonClass="btn btn-danger btn-sm">
               <input type="hidden" name="id" value={id} />
               <div className="form-grid">
-                <div className="field"><label htmlFor="s-s">Acción</label><select id="s-s" name="status" className="select">{l.status !== "suspendida" && <option value="suspendida">Suspender</option>}<option value="cancelada">Cancelar</option></select></div>
-                <div className="field"><label htmlFor="s-r" className="required">Motivo</label><input id="s-r" name="reason" className="input" required minLength={3} maxLength={2000} /></div>
+                <div className="field"><label htmlFor="s-s">{t.action}</label><select id="s-s" name="status" className="select">{l.status !== "suspendida" && <option value="suspendida">{t.suspend}</option>}<option value="cancelada">{t.cancel}</option></select></div>
+                <div className="field"><label htmlFor="s-r" className="required">{t.reason}</label><input id="s-r" name="reason" className="input" required minLength={3} maxLength={2000} /></div>
               </div>
             </ActionForm>
           )}
@@ -72,27 +76,27 @@ export default async function LicenseDetail(props: PageProps<"/admin/licencias/[
       </div>
 
       <section className="card card-body stack" style={{ marginTop: 16 }}>
-        <h2>Pagos</h2>
-        {payRows.length === 0 ? <p className="muted small">Sin pagos registrados.</p> : (
+        <h2>{t.payments}</h2>
+        {payRows.length === 0 ? <p className="muted small">{t.noPaymentsYet}</p> : (
           <div className="table-wrap">
             <table className="table">
-              <thead><tr><th>Fecha</th><th>Monto</th><th>Método</th><th>Comprobante</th><th>Estado</th><th>Revisión</th></tr></thead>
+              <thead><tr><th>{t.date}</th><th>{t.amount}</th><th>{t.method}</th><th>{t.receipt}</th><th>{t.status}</th><th>{t.review}</th></tr></thead>
               <tbody>{payRows.map((p) => (
                 <tr key={p.id}>
                   <td className="small">{formatDate(p.created_at, true)}<div className="xs muted">{labelFor(people, p.submitted_by)}</div></td>
                   <td>{formatMoney(p.amount, p.currency, { decimals: true })}</td>
-                  <td className="small">{labelOf(PAYMENT_METHODS, p.method)}{p.reference && <div className="xs">ref. {p.reference}</div>}</td>
-                  <td className="small">{p.receipt_path ? <FileLink path={p.receipt_path}>Descargar</FileLink> : "—"}</td>
-                  <td><Badge value={p.status} map={PAYMENT_STATUSES} />{p.review_reason && <div className="xs">{p.review_reason}</div>}</td>
+                  <td className="small">{labelOf(i.status.paymentMethods, p.method)}{p.reference && <div className="xs">{fmt(t.ref, { ref: p.reference })}</div>}</td>
+                  <td className="small">{p.receipt_path ? <FileLink path={p.receipt_path}>{t.download}</FileLink> : "—"}</td>
+                  <td><Badge value={p.status} map={i.status.payment} />{p.review_reason && <div className="xs">{p.review_reason}</div>}</td>
                   <td>
                     {p.status === "pendiente" ? (
                       <div className="stack">
-                        <ActionForm action={reviewLicensePayment} submit="Aprobar" buttonClass="btn btn-primary btn-sm" confirm="¿Confirmar que el pago fue recibido?">
+                        <ActionForm action={reviewLicensePayment} submit={t.approve} buttonClass="btn btn-primary btn-sm" confirm={t.confirmReceived}>
                           <input type="hidden" name="id" value={p.id} /><input type="hidden" name="license_id" value={id} /><input type="hidden" name="decision" value="aprobado" />
                         </ActionForm>
-                        <ActionForm action={reviewLicensePayment} submit="Rechazar" buttonClass="btn btn-danger btn-sm">
+                        <ActionForm action={reviewLicensePayment} submit={t.reject} buttonClass="btn btn-danger btn-sm">
                           <input type="hidden" name="id" value={p.id} /><input type="hidden" name="license_id" value={id} /><input type="hidden" name="decision" value="rechazado" />
-                          <input name="reason" className="input" required minLength={3} maxLength={2000} placeholder="Motivo" aria-label="Motivo del rechazo" />
+                          <input name="reason" className="input" required minLength={3} maxLength={2000} placeholder={t.reason} aria-label={t.rejectReason} />
                         </ActionForm>
                       </div>
                     ) : <span className="xs muted">{labelFor(people, p.reviewed_by)} · {formatDate(p.reviewed_at, true)}</span>}
@@ -105,10 +109,10 @@ export default async function LicenseDetail(props: PageProps<"/admin/licencias/[
       </section>
 
       <section className="card card-body stack" style={{ marginTop: 16 }}>
-        <h2>Publicaciones con esta licencia</h2>
-        {(props_.data ?? []).length === 0 ? <p className="muted small">Ninguna.</p> : (
+        <h2>{t.listings}</h2>
+        {(props_.data ?? []).length === 0 ? <p className="muted small">{t.noneF}</p> : (
           <ul>{((props_.data ?? []) as { id: string; code: string; title: string; status: string }[]).map((p) => (
-            <li key={p.id}><Link href={`/admin/inmuebles/${p.id}`}>{p.code}</Link> · {p.title} · {labelOf(STATUSES, p.status)}</li>
+            <li key={p.id}><Link href={`/admin/inmuebles/${p.id}`}>{p.code}</Link> · {p.title} · {labelOf(i.status.listing, p.status)}</li>
           ))}</ul>
         )}
       </section>

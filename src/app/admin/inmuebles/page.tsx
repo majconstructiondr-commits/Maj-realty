@@ -6,6 +6,7 @@ import { hrefWith, ilikeTerm, oneOf, pageOf, sortOf, str, type SP } from "@/lib/
 import { labelFor, staffCtx, userLabels } from "@/lib/admin/server";
 import { formatDate, formatMoney, type Currency } from "@/lib/format";
 import { createMajListing } from "./actions";
+import { env } from "@/lib/env";
 
 const BASE = "/admin/inmuebles";
 const SORTS = ["updated_at", "created_at", "submitted_at", "code", "title"] as const;
@@ -64,6 +65,12 @@ export default async function AdminProperties(props: PageProps<"/admin/inmuebles
         <Link className="btn btn-outline btn-sm" href="/admin/inmuebles/importar">Importar desde Excel</Link>
         <a className="btn btn-ghost btn-sm" href={exportHref}>Exportar CSV</a>
       </PageHeader>
+
+      <details className="card card-body" style={{ marginBottom: 16 }}>
+        <summary><strong>Enlace para Facebook e Instagram (catálogo)</strong></summary>
+        <p className="small muted">Todas las propiedades publicadas con precio y al menos una foto, siempre al día. Péguelo una vez en Meta Commerce Manager → Catálogo de inmuebles → Fuente de datos → Feed programado. También sirve para portales que lean feeds XML.</p>
+        <input className="input" readOnly value={`${env.siteUrl}/feeds/facebook.xml`} aria-label="Enlace del catálogo" />
+      </details>
 
       <details className="card card-body" style={{ marginBottom: 16 }}>
         <summary><strong>Crear publicación propia de MAJ</strong></summary>

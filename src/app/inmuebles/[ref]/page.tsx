@@ -32,6 +32,14 @@ function codeFromRef(ref: string) {
   return m ? m[1].toUpperCase() : null;
 }
 
+/** Fotos para la vista previa al compartir el enlace (Facebook, WhatsApp): enlace fijo que no vence. */
+function ogImages(media: { id: string; kind: string; storage_path: string | null; external_url: string | null; alt_text: string }[]) {
+  return media
+    .filter((m) => m.kind === "foto" && (m.storage_path || m.external_url))
+    .slice(0, 4)
+    .map((m) => ({ url: m.storage_path ? `${env.siteUrl}/feeds/foto/${m.id}` : m.external_url!, alt: m.alt_text }));
+}
+
 export async function generateMetadata(props: PageProps<"/inmuebles/[ref]">): Promise<Metadata> {
   const { ref } = await props.params;
   const code = codeFromRef(ref);
@@ -46,7 +54,7 @@ export async function generateMetadata(props: PageProps<"/inmuebles/[ref]">): Pr
     description: `${fmt(d.listing.metaIn, { type: d.labels.propertyTypes[l.property_type], place })} ${price}`.slice(0, 160),
     alternates: { canonical: listingHref(l) },
     robots: l.is_demo ? { index: false, follow: false } : undefined,
-    openGraph: { title: l.title, type: "website", url: listingHref(l) },
+    openGraph: { title: l.title, type: "website", url: listingHref(l), images: ogImages(data.media) },
   };
 }
 
